@@ -294,6 +294,7 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
 
     let audioContext;
     let toastTimer;
+    let rackClickTimer;
 
     function init() {
       detectEffectBackground();
@@ -539,6 +540,14 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
           unplaceModule(module.uid);
           return;
         }
+        if (location === "rack") {
+          clearTimeout(rackClickTimer);
+          rackClickTimer = setTimeout(() => {
+            state.selected = state.selected === module.uid ? null : module.uid;
+            render();
+          }, 220);
+          return;
+        }
         state.selected = state.selected === module.uid ? null : module.uid;
         render();
       });
@@ -546,6 +555,7 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
         card.addEventListener("dblclick", (event) => {
           event.stopPropagation();
           if (state.settling) return;
+          clearTimeout(rackClickTimer);
           const firstEmpty = state.slots.findIndex((slot) => !slot);
           if (firstEmpty === -1) {
             toast("卡槽已满，可单击已装模块卸载。");
