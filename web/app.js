@@ -275,6 +275,9 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       previewPressure: document.getElementById("previewPressure"),
       previewRisk: document.getElementById("previewRisk"),
       multiplierDisplay: document.getElementById("multiplierDisplay"),
+      baseDisplay: document.getElementById("baseDisplay"),
+      voltDisplay: document.getElementById("voltDisplay"),
+      profitDisplay: document.getElementById("profitDisplay"),
       yieldBoost: document.getElementById("yieldBoost"),
       chainGain: document.getElementById("chainGain"),
       overloadGain: document.getElementById("overloadGain"),
@@ -489,7 +492,12 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       const preview = simulatePreview();
       const filled = state.slots.filter(Boolean).length;
       const multiplier = state.slots.some(Boolean) ? preview.multiplier : 1;
+      const base = state.slots.some(Boolean) ? preview.base : baseProfit();
+      const profit = state.slots.some(Boolean) ? preview.profit : 0;
       if (els.multiplierDisplay) els.multiplierDisplay.textContent = `x${multiplier.toFixed(2)}`;
+      if (els.baseDisplay) els.baseDisplay.textContent = `${Math.round(base)} A`;
+      if (els.voltDisplay) els.voltDisplay.textContent = `x${multiplier.toFixed(2)}`;
+      if (els.profitDisplay) els.profitDisplay.textContent = money(profit);
       if (els.yieldBoost) els.yieldBoost.textContent = `+${Math.max(0, Math.round((multiplier - 1) * 100))}%`;
       if (els.chainGain) els.chainGain.textContent = preview.sequence ? preview.sequence.name : "未点火";
       if (els.overloadGain) els.overloadGain.textContent = `+${Math.max(0, (preview.pressure / 34).toFixed(2))}`;
@@ -665,8 +673,12 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
 
         const beforePressure = run.pressure;
         const beforeProfit = currentRunProfit(run);
+        const beforeBase = run.base;
+        const beforeMult = run.multiplier;
         const message = resolveModule(module, run);
         const afterProfit = currentRunProfit(run);
+        const afterBase = run.base;
+        const afterMult = run.multiplier;
 
         logLine(`槽位 ${index + 1}：${message}`, run.pressure >= 80 ? "danger" : "");
         if (beforePressure < 80 && run.pressure >= 80) {
@@ -675,7 +687,8 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
         }
         await Promise.all([
           animatePressure(beforePressure, run.pressure),
-          animatePreviewProfit(beforeProfit, afterProfit)
+          animatePreviewProfit(beforeProfit, afterProfit),
+          animateDualCore(beforeBase, afterBase, beforeMult, afterMult, beforeProfit, afterProfit)
         ]);
         shake(Math.min(14, 2 + run.pressure / 12));
 
@@ -835,6 +848,26 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
     function animatePreviewProfit(from, to) {
       return animateNumber(from, to, 480, (value) => {
         els.previewProfit.textContent = money(value);
+      });
+    }
+
+    function animateDualCore(baseFrom, baseTo, multFrom, multTo, profitFrom, profitTo) {
+      const start = performance.now();
+      const duration = 420;
+      return new Promise((resolve) => {
+        function frame(now) {
+          const t = Math.min(1, (now - start) / duration);
+          const eased = 1 - Math.pow(1 - t, 3);
+          const baseNow = baseFrom + (baseTo - baseFrom) * eased;
+          const multNow = multFrom + (multTo - multFrom) * eased;
+          const profitNow = profitFrom + (profitTo - profitFrom) * eased;
+          if (els.baseDisplay) els.baseDisplay.textContent = `${Math.round(baseNow)} A`;
+          if (els.voltDisplay) els.voltDisplay.textContent = `x${multNow.toFixed(2)}`;
+          if (els.profitDisplay) els.profitDisplay.textContent = money(profitNow);
+          if (t < 1) requestAnimationFrame(frame);
+          else resolve();
+        }
+        requestAnimationFrame(frame);
       });
     }
 

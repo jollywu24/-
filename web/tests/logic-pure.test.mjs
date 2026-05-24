@@ -26,3 +26,31 @@ test('simulatePreview marks blown risk when pressure exceeds limit', () => {
   });
   assert.equal(out.riskText, '爆炸');
 });
+
+test('simulatePreview returns profit = round(base * multiplier)', () => {
+  const slots = [{ phase: 'kinetic', trigger: 'ON_RESOLVE', preview: (run) => { run.base += 90; run.multiplier *= 2; } }];
+  const out = simulatePreview({
+    slots,
+    state: { pressure: 0, baseDebt: 0 },
+    baseProfit: 100,
+    resolveModuleFn: (m, run, options) => {
+      if (options?.preview) m.preview(run);
+    },
+  });
+  assert.equal(out.profit, Math.round(out.base * out.multiplier));
+});
+
+test('simulatePreview exposes base/mult changes for mental math UI', () => {
+  const slots = [{ phase: 'pulse', trigger: 'ON_RESOLVE', preview: (run) => { run.base += 50; } }];
+  const out = simulatePreview({
+    slots,
+    state: { pressure: 10, baseDebt: 0 },
+    baseProfit: 80,
+    resolveModuleFn: (m, run, options) => {
+      if (options?.preview) m.preview(run);
+    },
+  });
+  assert.ok(out.base >= 80);
+  assert.ok(out.multiplier >= 1);
+  assert.equal(out.profit, Math.round(out.base * out.multiplier));
+});

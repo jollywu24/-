@@ -1048,6 +1048,38 @@
       font-weight: 900;
       text-align: center;
     }
+    .dual-core {
+      position: relative;
+      z-index: 6;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 8px;
+      align-items: center;
+      margin-top: 42px;
+    }
+    .dual-node {
+      border: 1px solid rgba(236, 162, 80, 0.45);
+      border-radius: 6px;
+      padding: 6px 10px;
+      background: rgba(10, 10, 9, 0.66);
+      text-align: center;
+    }
+    .dual-node span {
+      display: block;
+      font-size: 11px;
+      color: #bea687;
+      font-weight: 800;
+    }
+    .dual-node strong {
+      display: block;
+      margin-top: 4px;
+      font-size: clamp(20px, 2vw, 30px);
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+    }
+    .dual-node.base strong { color: #70d4ff; }
+    .dual-node.mult strong { color: #ff9a46; }
+    .dual-node.profit strong { color: #74ea8e; }
 
     .engine-scale {
       position: absolute;

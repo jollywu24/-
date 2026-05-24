@@ -131,6 +131,7 @@
 
     return {
       profit: currentRunProfit(run),
+      base: run.base,
       pressure: run.pressure,
       multiplier: run.multiplier,
       limit: run.explosionLimit,
