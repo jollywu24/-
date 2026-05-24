@@ -535,9 +535,25 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       card.addEventListener("click", (event) => {
         event.stopPropagation();
         if (state.settling) return;
+        if (location === "slot") {
+          unplaceModule(module.uid);
+          return;
+        }
         state.selected = state.selected === module.uid ? null : module.uid;
         render();
       });
+      if (location === "rack") {
+        card.addEventListener("dblclick", (event) => {
+          event.stopPropagation();
+          if (state.settling) return;
+          const firstEmpty = state.slots.findIndex((slot) => !slot);
+          if (firstEmpty === -1) {
+            toast("卡槽已满，可单击已装模块卸载。");
+            return;
+          }
+          placeModule(module.uid, firstEmpty);
+        });
+      }
       return card;
     }
 
@@ -598,6 +614,15 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       render();
     }
 
+    function unplaceModule(uid) {
+      const slotIndex = state.slots.findIndex((card) => card && card.uid === uid);
+      if (slotIndex === -1) return;
+      state.slots[slotIndex] = null;
+      state.selected = null;
+      tick(128, 0.03, "square");
+      render();
+    }
+
     async function pullLever() {
       if (state.settling) return;
       if (!state.slots.some(Boolean)) {
@@ -611,7 +636,7 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       tick(96, 0.05, "sawtooth");
       render();
 
-      const run = createRunState();
+      const run = createRunState(state, baseProfit());
       const sequence = evaluateIgnitionSequence(state.slots);
       applyIgnitionSequence(run, sequence);
       logLine(`点火序列：${sequence.name}，基础 +${sequence.base}，倍率 x${sequence.mult.toFixed(2)}${sequence.limit ? `，红线 +${sequence.limit}` : ""}。`, sequence.limit ? "warn" : "");
