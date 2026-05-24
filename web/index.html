@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>深渊引擎 Demo v0.1</title>
+    <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="shell" id="shell">
+    <section class="game">
+      <aside class="left">
+        <div class="brand">
+          <div class="version">DEMO v0.1.0</div>
+          <h1 class="title">深渊引擎</h1>
+          <div class="subtitle">ABYSS ENGINE</div>
+        </div>
+
+        <div class="stats">
+          <div class="panel stat">
+            <div class="label">当前资金</div>
+            <div class="value" id="cash">¥ 0</div>
+          </div>
+          <div class="panel stat">
+            <div class="label">目标金额</div>
+            <div class="value small" id="target">¥ 100</div>
+            <div class="run-meta" id="targetMeta">本轮必须达成</div>
+          </div>
+          <div class="panel stat">
+            <div class="label">当前轮次</div>
+            <div class="value small" id="round">1 / 8</div>
+          </div>
+          <div class="panel stat">
+            <div class="label">最高连胜</div>
+            <div class="value small" id="best">0</div>
+          </div>
+        </div>
+
+        <button class="codex-button" id="codexButton" type="button">
+          <span class="mini-icon" aria-hidden="true"></span>
+          <strong>模块图鉴</strong>
+        </button>
+
+        <section class="panel log">
+          <div class="log-title">运行日志</div>
+          <div class="log-list" id="log"></div>
+        </section>
+      </aside>
+
+      <section class="center">
+        <div class="topbar">
+          <section class="panel multiplier-engine">
+            <div class="engine-title">倍率引擎</div>
+            <div class="engine-scale left-scale">
+              <span>x1</span>
+              <span>x2</span>
+              <span>x4</span>
+              <span>x8</span>
+              <span>x16</span>
+            </div>
+            <div class="engine-scale right-scale">
+              <span>x32</span>
+              <span>x64</span>
+              <span>x128</span>
+              <span>x256</span>
+            </div>
+            <div class="multiplier-value" id="multiplierDisplay">x1.00</div>
+            <div class="multiplier-label">当前总倍率</div>
+            <div class="chain-panel">
+              <span>连锁增幅</span>
+              <div class="chain-track" aria-hidden="true">
+                <i></i><i></i><i></i><i></i><i></i>
+              </div>
+              <strong id="chainText">0 / 5</strong>
+            </div>
+          </section>
+
+          <aside class="engine-readouts">
+            <div class="panel readout">
+              <span>收益增幅</span>
+              <strong id="yieldBoost">+0%</strong>
+            </div>
+            <div class="panel readout">
+              <span>点火序列</span>
+              <strong id="chainGain">+0.00</strong>
+            </div>
+            <div class="panel readout hot">
+              <span>过载加成</span>
+              <strong id="overloadGain">+0.00</strong>
+            </div>
+          </aside>
+
+          <nav class="toolbar" aria-label="工具">
+            <button class="icon-button" id="soundButton" type="button" title="音效">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 10v4h4l5 4V6L8 10H4Z"></path>
+                <path d="M17 9a4 4 0 0 1 0 6"></path>
+                <path d="M19.5 6.5a8 8 0 0 1 0 11"></path>
+              </svg>
+            </button>
+            <button class="icon-button" id="settingsButton" type="button" title="重开">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M21 12a9 9 0 1 1-3-6.7"></path>
+                <path d="M21 3v6h-6"></path>
+              </svg>
+            </button>
+            <button class="icon-button" id="helpButton" type="button" title="概率">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9.2 9a3 3 0 1 1 5.1 2.1c-1.4 1.1-2.3 1.7-2.3 3.4"></path>
+                <path d="M12 18h.01"></path>
+                <circle cx="12" cy="12" r="10"></circle>
+              </svg>
+            </button>
+          </nav>
+        </div>
+
+        <section class="panel machine">
+          <div class="slots" id="slots"></div>
+        </section>
+
+        <section class="lower-console">
+          <div class="panel trend-box">
+            <div class="preview-title">压力趋势</div>
+            <strong id="pressureTrend">+0</strong>
+            <span>预计变化</span>
+          </div>
+
+          <section class="panel pressure-console">
+            <div class="console-title">压力预览（放置后预估）</div>
+            <div class="meter-shell">
+              <div class="meter-arc"></div>
+              <div class="meter-mark left">0</div>
+              <div class="meter-mark mid">50</div>
+              <div class="meter-mark right">100</div>
+              <div class="needle" id="needle"></div>
+              <div class="meter-center">
+                <div class="pressure-value" id="pressure">0</div>
+                <div class="pressure-label">/ 100</div>
+              </div>
+              <div class="danger-sign">
+                危险区
+                <span>压力 > 100 时引擎将熔毁</span>
+              </div>
+            </div>
+          </section>
+        </section>
+      </section>
+
+      <aside class="right">
+        <section class="panel rack">
+          <div class="rack-head">
+            <div class="rack-title">可用模块</div>
+            <button class="small-button" id="refreshButton" type="button">换一组 [R]</button>
+          </div>
+          <div class="rack-list" id="rack"></div>
+        </section>
+
+        <section class="panel lever-panel">
+          <button class="pull" id="pullButton" type="button">拉 杆<span>PULL</span></button>
+          <div class="lever-note">按下拉杆，启动引擎</div>
+        </section>
+
+        <section class="panel preview">
+          <div class="preview-head">
+            <div class="preview-title">本轮预估</div>
+          </div>
+          <div class="preview-grid">
+            <div class="preview-row">
+              <span>预计收益</span>
+              <strong id="previewProfit">¥ 0</strong>
+            </div>
+            <div class="preview-row danger">
+              <span>预计最终压力</span>
+              <strong id="previewPressure">0 / 100</strong>
+            </div>
+            <div class="preview-row">
+              <span>爆炸风险</span>
+              <strong id="previewRisk">未知</strong>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </section>
+    <div id="buildVersion" style="position:fixed;right:10px;bottom:8px;font:12px monospace;opacity:.75;z-index:99"></div>
+  </main>
+
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h2 id="modalTitle">引擎熔毁</h2>
+      <p id="modalBody">压力越过红线，资金化成了灰。</p>
+      <div class="modal-actions">
+        <button class="modal-button" id="restartButton" type="button">重新开机</button>
+        <button class="modal-button" id="continueButton" type="button">继续查看</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+    <script src="./app.js"></script>
+</body>
+</html>
