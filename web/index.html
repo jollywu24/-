@@ -3,25 +3,3270 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Joker-like Web MVP</title>
-  <link rel="stylesheet" href="./style.css" />
+  <title>深渊引擎 Demo v0.1</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070706;
+      --panel: #151613;
+      --panel-2: #202017;
+      --panel-3: #2b261d;
+      --line: #5a4c38;
+      --line-hot: #b7432f;
+      --text: #e4ddc6;
+      --muted: #9a907d;
+      --dim: #6f6658;
+      --green: #37d17b;
+      --amber: #e2bd4f;
+      --red: #e94d38;
+      --cyan: #4dc6d7;
+      --violet: #b55cf4;
+      --rust: #9c422d;
+      --slot-w: clamp(112px, 12vw, 152px);
+      --slot-h: clamp(188px, 24vh, 244px);
+      --shake-x: 0px;
+      --engine-heat: 0;
+      --chain-fill: 0;
+      --effect-bg: none;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      overflow-x: hidden;
+      background:
+        radial-gradient(circle at 22% 12%, rgba(136, 52, 34, 0.18), transparent 34%),
+        linear-gradient(130deg, #080807 0%, #16140f 48%, #090a09 100%);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.34;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+        radial-gradient(circle at 18% 74%, rgba(255, 192, 92, 0.08), transparent 28%);
+      background-size: 4px 4px, 6px 6px, 100% 100%;
+      mix-blend-mode: screen;
+    }
+
+    body.settling {
+      cursor: wait;
+    }
+
+    body.critical .shell {
+      animation: bodyPulse 0.7s infinite;
+    }
+
+    body.boom .shell {
+      animation: detonate 0.48s ease-in-out 3;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      color: inherit;
+    }
+
+    .shell {
+      width: min(1440px, 100%);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: clamp(14px, 2vw, 26px);
+      transform: translateX(var(--shake-x));
+    }
+
+    .game {
+      display: grid;
+      grid-template-columns: minmax(190px, 0.75fr) minmax(620px, 2.9fr) minmax(250px, 0.95fr);
+      gap: clamp(12px, 1.4vw, 20px);
+      min-height: calc(100vh - clamp(28px, 4vw, 52px));
+    }
+
+    .left,
+    .right,
+    .center {
+      min-width: 0;
+    }
+
+    .brand {
+      min-height: 136px;
+      padding: 12px 8px 14px;
+      border-bottom: 2px solid rgba(188, 143, 78, 0.28);
+    }
+
+    .version {
+      margin-bottom: 4px;
+      color: #837761;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .title {
+      margin: 0;
+      color: #e8debd;
+      font-family: Impact, "Arial Black", "Microsoft YaHei", sans-serif;
+      font-size: clamp(38px, 3.45vw, 54px);
+      line-height: 0.92;
+      white-space: nowrap;
+      text-shadow:
+        0 3px 0 #2a2317,
+        0 0 18px rgba(255, 209, 113, 0.16);
+    }
+
+    .subtitle {
+      margin-top: 8px;
+      color: #d56a39;
+      font-size: clamp(13px, 1.3vw, 18px);
+      font-weight: 800;
+      letter-spacing: 0.26em;
+    }
+
+    .panel {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(174, 141, 91, 0.34);
+      border-radius: 6px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 18%),
+        linear-gradient(145deg, rgba(35, 34, 27, 0.94), rgba(13, 14, 12, 0.96));
+      box-shadow:
+        inset 0 0 0 1px rgba(0, 0, 0, 0.65),
+        inset 0 -16px 28px rgba(0, 0, 0, 0.32),
+        0 16px 36px rgba(0, 0, 0, 0.34);
+    }
+
+    .panel::after,
+    .card::after,
+    .slot::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent),
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 5px);
+      opacity: 0.22;
+      mix-blend-mode: screen;
+    }
+
+    .stats {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .stat {
+      padding: 14px 14px 12px;
+      min-height: 78px;
+    }
+
+    .label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .value {
+      color: #e86f4c;
+      font-size: clamp(27px, 3vw, 38px);
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      text-shadow: 0 0 12px rgba(232, 89, 53, 0.22);
+    }
+
+    .value.small {
+      color: #dfd6bc;
+      font-size: clamp(23px, 2.4vw, 31px);
+    }
+
+    .run-meta {
+      color: var(--dim);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .codex-button {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      min-height: 58px;
+      margin-top: 12px;
+      padding: 12px 14px;
+      border: 1px solid rgba(186, 142, 84, 0.34);
+      border-radius: 6px;
+      background:
+        linear-gradient(180deg, rgba(74, 66, 49, 0.62), rgba(23, 22, 18, 0.96));
+      cursor: pointer;
+      transition: border-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .codex-button:hover {
+      border-color: rgba(229, 189, 107, 0.64);
+      transform: translateY(-1px);
+    }
+
+    .mini-icon {
+      position: relative;
+      width: 42px;
+      height: 32px;
+      flex: 0 0 auto;
+      border: 2px solid #8c7350;
+      border-radius: 4px;
+      background: #15120e;
+      box-shadow: inset 0 0 0 2px #2e271c;
+    }
+
+    .mini-icon::before,
+    .mini-icon::after {
+      content: "";
+      position: absolute;
+      top: 6px;
+      width: 18px;
+      height: 22px;
+      border: 2px solid #b49a6e;
+      border-radius: 3px;
+      background: #241d15;
+      transform: rotate(-12deg);
+    }
+
+    .mini-icon::before {
+      left: 7px;
+    }
+
+    .mini-icon::after {
+      right: 4px;
+      transform: rotate(12deg);
+    }
+
+    .log {
+      height: min(31vh, 260px);
+      margin-top: 12px;
+      padding: 12px 12px 10px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .log-title,
+    .rack-title,
+    .preview-title {
+      color: #ded3b6;
+      font-size: 16px;
+      font-weight: 900;
+    }
+
+    .log-list {
+      flex: 1 1 auto;
+      min-height: 0;
+      margin-top: 10px;
+      padding-right: 4px;
+      overflow: auto;
+      list-style: none;
+    }
+
+    .log-list div {
+      margin-bottom: 6px;
+      color: #9edc9c;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .log-list div.warn {
+      color: #e8bf4d;
+    }
+
+    .log-list div.danger {
+      color: #ef6b55;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(400px, 1fr) auto;
+      gap: 16px;
+      align-items: stretch;
+      min-height: 190px;
+    }
+
+    .meter-panel {
+      position: relative;
+      padding: 14px 22px 12px;
+      border-radius: 7px;
+    }
+
+    .meter-shell {
+      position: relative;
+      height: 164px;
+      max-width: 670px;
+      margin: 0 auto;
+    }
+
+    .meter-arc {
+      position: absolute;
+      inset: 4px 18px 0;
+      border-radius: 320px 320px 20px 20px;
+      background:
+        conic-gradient(from 235deg at 50% 88%, #23bb79 0deg 57deg, #d7c04c 57deg 89deg, #da6b3f 89deg 117deg, #b22a26 117deg 142deg, transparent 142deg 360deg);
+      clip-path: polygon(0 0, 100% 0, 100% 88%, 0 88%);
+      filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5));
+    }
+
+    .meter-arc::before {
+      content: "";
+      position: absolute;
+      inset: 24px 42px 0;
+      border-radius: 280px 280px 18px 18px;
+      background:
+        linear-gradient(180deg, rgba(0, 0, 0, 0.82), rgba(18, 17, 13, 0.94));
+    }
+
+    .needle {
+      position: absolute;
+      left: 50%;
+      bottom: 32px;
+      width: 43%;
+      height: 6px;
+      transform-origin: 0 50%;
+      transform: rotate(var(--needle, 235deg));
+      transition: transform 0.55s cubic-bezier(.2,.9,.18,1.2);
+      background:
+        linear-gradient(90deg, rgba(247, 216, 120, 0.18), #e8c14e 28%, #ed533a 100%);
+      border-radius: 8px;
+      box-shadow: 0 0 14px rgba(238, 84, 55, 0.45);
+      z-index: 3;
+    }
+
+    .needle::after {
+      content: "";
+      position: absolute;
+      right: -7px;
+      top: 50%;
+      width: 18px;
+      height: 18px;
+      transform: translateY(-50%) rotate(45deg);
+      background: #e64b36;
+      border-radius: 2px;
+    }
+
+    .meter-center {
+      position: absolute;
+      left: 50%;
+      top: 48%;
+      z-index: 4;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .pressure-value {
+      color: #ff6044;
+      font-size: clamp(50px, 6vw, 78px);
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+      line-height: 0.92;
+      text-shadow: 0 0 18px rgba(255, 74, 45, 0.35);
+    }
+
+    .pressure-label {
+      margin-top: 5px;
+      color: #a89d83;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .meter-mark {
+      position: absolute;
+      z-index: 5;
+      color: #e5d3a4;
+      font-size: 19px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .meter-mark.left {
+      left: 21%;
+      bottom: 58px;
+      color: #56d7b4;
+    }
+
+    .meter-mark.mid {
+      left: 50%;
+      top: 11px;
+      transform: translateX(-50%);
+    }
+
+    .meter-mark.right {
+      right: 12%;
+      bottom: 58px;
+      color: #eb6252;
+    }
+
+    .danger-sign {
+      position: absolute;
+      right: 22px;
+      top: 36px;
+      z-index: 6;
+      min-width: 150px;
+      padding: 10px 12px;
+      border: 1px solid rgba(219, 72, 55, 0.52);
+      border-radius: 4px;
+      background: rgba(68, 19, 16, 0.58);
+      color: #f06f5c;
+      font-size: 14px;
+      font-weight: 900;
+      box-shadow: inset 0 0 20px rgba(233, 64, 43, 0.12);
+    }
+
+    .danger-sign span {
+      display: block;
+      margin-top: 5px;
+      color: #c6a08b;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      min-width: 136px;
+      padding-top: 8px;
+    }
+
+    .icon-button {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border: 1px solid rgba(164, 134, 91, 0.3);
+      border-radius: 5px;
+      background: rgba(13, 14, 12, 0.64);
+      cursor: pointer;
+    }
+
+    .icon-button:hover {
+      border-color: rgba(220, 183, 105, 0.66);
+    }
+
+    .icon-button svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: #b7a98f;
+      stroke-width: 2.4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .machine {
+      margin-top: 14px;
+      padding: clamp(12px, 1.6vw, 20px);
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(100, 76, 46, 0.22), transparent 28%),
+        linear-gradient(90deg, rgba(12, 13, 11, 0.97), rgba(35, 32, 25, 0.96), rgba(12, 13, 11, 0.98));
+    }
+
+    .slots {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(94px, 1fr));
+      gap: clamp(10px, 1.2vw, 16px);
+      align-items: stretch;
+    }
+
+    .slot-wrap {
+      min-width: 0;
+    }
+
+    .slot-label {
+      margin-bottom: 7px;
+      color: #a89b7f;
+      font-size: 14px;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .slot {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-height: var(--slot-h);
+      border: 2px solid rgba(115, 95, 67, 0.8);
+      border-radius: 7px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 16%),
+        linear-gradient(145deg, rgba(44, 40, 31, 0.98), rgba(13, 13, 11, 0.98));
+      box-shadow:
+        inset 0 0 0 5px rgba(0, 0, 0, 0.34),
+        inset 0 0 42px rgba(0, 0, 0, 0.64);
+      transition: border-color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .slot.empty {
+      border-style: dashed;
+    }
+
+    .slot.empty::before {
+      content: "+";
+      color: rgba(219, 191, 135, 0.48);
+      font-size: clamp(38px, 4vw, 54px);
+      font-weight: 700;
+    }
+
+    .slot.drop-ready {
+      border-color: #e0b962;
+      box-shadow:
+        inset 0 0 0 5px rgba(0, 0, 0, 0.34),
+        0 0 24px rgba(226, 189, 79, 0.22);
+    }
+
+    .slot.active {
+      border-color: #ffd267;
+      transform: translateY(-4px);
+      box-shadow:
+        inset 0 0 0 5px rgba(0, 0, 0, 0.34),
+        0 0 26px rgba(255, 194, 70, 0.5);
+    }
+
+    .slot.burned {
+      filter: grayscale(0.65) brightness(0.74);
+    }
+
+    .card {
+      position: relative;
+      width: min(var(--slot-w), 100%);
+      min-height: calc(var(--slot-h) - 16px);
+      padding: 12px 10px 10px;
+      border: 2px solid var(--card-border, #89643b);
+      border-radius: 6px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.1), transparent 18%),
+        radial-gradient(circle at 50% 18%, var(--card-glow, rgba(222, 161, 58, 0.2)), transparent 34%),
+        linear-gradient(160deg, var(--card-a, #2f2013), var(--card-b, #11110e) 70%);
+      box-shadow:
+        inset 0 0 0 2px rgba(0, 0, 0, 0.42),
+        0 12px 22px rgba(0, 0, 0, 0.33);
+      cursor: grab;
+      user-select: none;
+      transition: transform 0.14s ease, border-color 0.14s ease, opacity 0.14s ease;
+    }
+
+    .card:active {
+      cursor: grabbing;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: #d6aa61;
+    }
+
+    .card.selected {
+      outline: 3px solid rgba(255, 215, 109, 0.72);
+      outline-offset: 3px;
+    }
+
+    .card.dragging {
+      opacity: 0.45;
+    }
+
+    .card.in-rack {
+      width: 100%;
+      min-height: 104px;
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      gap: 10px;
+      align-items: center;
+      padding: 9px 10px;
+    }
+
+    .card.in-rack .module-icon {
+      width: 58px;
+      height: 58px;
+      margin: 0;
+    }
+
+    .card.in-rack .module-name {
+      margin: 0 0 4px;
+      text-align: left;
+      font-size: 15px;
+    }
+
+    .card.in-rack .module-desc,
+    .card.in-rack .module-meta {
+      text-align: left;
+    }
+
+    .module-icon {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: min(76px, 70%);
+      aspect-ratio: 1;
+      margin: 2px auto 10px;
+      color: var(--icon, #f0a947);
+      filter: drop-shadow(0 0 10px var(--card-glow, rgba(227, 146, 36, 0.35)));
+    }
+
+    .module-icon svg {
+      width: 100%;
+      height: 100%;
+      fill: rgba(0, 0, 0, 0.18);
+      stroke: currentColor;
+      stroke-width: 2.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .module-name {
+      margin: 0 0 9px;
+      color: var(--name, #f2af53);
+      font-size: clamp(15px, 1.45vw, 18px);
+      font-weight: 950;
+      text-align: center;
+      line-height: 1.1;
+    }
+
+    .module-desc {
+      margin: 0;
+      color: #d0c4a8;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.35;
+      text-align: center;
+    }
+
+    .module-meta {
+      margin-top: 9px;
+      color: var(--meta, #e0a24a);
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 1.35;
+      text-align: center;
+    }
+
+    .module-trigger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 20px;
+      margin-top: 8px;
+      padding: 2px 7px;
+      border: 1px solid rgba(226, 189, 79, 0.38);
+      border-radius: 4px;
+      color: #b8aa8b;
+      font-size: 11px;
+      font-weight: 900;
+      line-height: 1.2;
+      text-align: center;
+    }
+
+    .phase-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 20px;
+      margin: 0 0 7px;
+      padding: 2px 7px;
+      border: 1px solid currentColor;
+      border-radius: 4px;
+      color: var(--phase, #f0a349);
+      background: rgba(0, 0, 0, 0.22);
+      font-size: 11px;
+      font-weight: 950;
+      line-height: 1.1;
+      text-shadow: 0 0 8px currentColor;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 20px;
+      margin-left: 6px;
+      padding: 2px 7px;
+      border: 1px solid currentColor;
+      border-radius: 4px;
+      color: var(--tag, #d0634b);
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .machine-footer {
+      display: grid;
+      grid-template-columns: 1fr minmax(210px, 330px) 1fr;
+      align-items: center;
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .pipe {
+      height: 40px;
+      border: 1px solid rgba(131, 92, 54, 0.5);
+      border-radius: 40px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.1), transparent 38%),
+        repeating-linear-gradient(90deg, #171510 0 18px, #252018 18px 29px);
+      box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.75);
+    }
+
+    .pull {
+      position: relative;
+      min-height: 104px;
+      border: 3px solid #6d271d;
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, #b84e35, #6d2119 66%, #32100d);
+      color: #ffd47d;
+      cursor: pointer;
+      font-size: clamp(36px, 4vw, 58px);
+      font-weight: 950;
+      letter-spacing: 0.06em;
+      text-shadow: 0 3px 0 #3f150f;
+      box-shadow:
+        inset 0 0 0 4px rgba(0, 0, 0, 0.4),
+        0 16px 0 #16110d,
+        0 22px 28px rgba(0, 0, 0, 0.48);
+      transition: transform 0.12s ease, filter 0.12s ease;
+    }
+
+    .pull::before,
+    .pull::after {
+      content: "";
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      height: 8px;
+      background: repeating-linear-gradient(90deg, #1b1712 0 15px, #ad8f44 15px 26px);
+      opacity: 0.62;
+    }
+
+    .pull::before {
+      bottom: 10px;
+    }
+
+    .pull::after {
+      top: 10px;
+    }
+
+    .pull:hover:not(:disabled) {
+      filter: brightness(1.08);
+    }
+
+    .pull:active:not(:disabled) {
+      transform: translateY(7px);
+      box-shadow:
+        inset 0 0 0 4px rgba(0, 0, 0, 0.4),
+        0 8px 0 #16110d,
+        0 12px 20px rgba(0, 0, 0, 0.48);
+    }
+
+    .pull:disabled {
+      cursor: not-allowed;
+      filter: grayscale(0.56) brightness(0.7);
+    }
+
+    .right {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .rack {
+      flex: 1 1 auto;
+      min-height: 0;
+      padding: 14px;
+    }
+
+    .rack-head,
+    .preview-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .small-button {
+      min-height: 34px;
+      padding: 6px 11px;
+      border: 1px solid rgba(176, 135, 77, 0.4);
+      border-radius: 4px;
+      background: rgba(16, 17, 14, 0.8);
+      color: #bfb39a;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .small-button:hover:not(:disabled) {
+      border-color: rgba(228, 184, 102, 0.8);
+      color: #e9d5a7;
+    }
+
+    .small-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.42;
+    }
+
+    .rack-list {
+      display: grid;
+      gap: 10px;
+      max-height: calc(100vh - 332px);
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .preview {
+      flex: 0 0 auto;
+      padding: 14px;
+      min-height: 150px;
+    }
+
+    .preview-grid {
+      display: grid;
+      gap: 9px;
+    }
+
+    .preview-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      color: #baaf98;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .preview-row strong {
+      color: #e3d3a4;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .preview-row.danger strong {
+      color: #ef5946;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      place-items: center;
+      padding: 18px;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(184, 40, 25, 0.22), transparent 44%),
+        rgba(0, 0, 0, 0.68);
+      backdrop-filter: blur(2px);
+    }
+
+    .overlay.show {
+      display: grid;
+    }
+
+    .modal {
+      width: min(520px, 100%);
+      padding: 26px;
+      border: 2px solid rgba(216, 91, 59, 0.7);
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(80, 31, 23, 0.96), rgba(16, 13, 11, 0.98));
+      box-shadow:
+        inset 0 0 0 3px rgba(0, 0, 0, 0.42),
+        0 26px 70px rgba(0, 0, 0, 0.7);
+      text-align: center;
+    }
+
+    .modal h2 {
+      margin: 0 0 12px;
+      color: #ffcc72;
+      font-size: clamp(30px, 5vw, 52px);
+      line-height: 1;
+      letter-spacing: 0.06em;
+    }
+
+    .modal p {
+      margin: 8px 0 0;
+      color: #d4c4a0;
+      font-size: 16px;
+      line-height: 1.55;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 22px;
+    }
+
+    .modal-button {
+      min-width: 132px;
+      min-height: 44px;
+      border: 1px solid rgba(236, 191, 95, 0.65);
+      border-radius: 5px;
+      background: linear-gradient(180deg, #a64a32, #4d1d16);
+      color: #ffe0a0;
+      cursor: pointer;
+      font-weight: 950;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      z-index: 30;
+      width: min(460px, calc(100vw - 32px));
+      padding: 12px 16px;
+      border: 1px solid rgba(238, 181, 78, 0.54);
+      border-radius: 6px;
+      background: rgba(19, 18, 14, 0.92);
+      color: #e9d7a6;
+      font-size: 14px;
+      font-weight: 800;
+      text-align: center;
+      transform: translate(-50%, 110px);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    .toast.show {
+      transform: translate(-50%, 0);
+      opacity: 1;
+    }
+
+    .game {
+      grid-template-columns: minmax(230px, 0.78fr) minmax(720px, 3.2fr) minmax(270px, 0.9fr);
+      gap: 12px;
+    }
+
+    .center {
+      display: grid;
+      grid-template-rows: auto auto minmax(190px, 0.72fr);
+      gap: 12px;
+    }
+
+    .topbar {
+      grid-template-columns: minmax(520px, 1fr) minmax(132px, 170px) auto;
+      min-height: 224px;
+      align-items: stretch;
+    }
+
+    .multiplier-engine {
+      min-height: 224px;
+      padding: 20px 28px 16px;
+      border-color: rgba(232, 125, 42, 0.48);
+      background:
+        radial-gradient(circle at 50% 58%, rgba(255, 99, 23, 0.34), transparent 30%),
+        radial-gradient(circle at 50% 78%, rgba(255, 177, 45, 0.18), transparent 48%),
+        linear-gradient(180deg, rgba(45, 34, 21, 0.96), rgba(7, 8, 7, 0.98));
+      box-shadow:
+        inset 0 0 0 2px rgba(0, 0, 0, 0.68),
+        inset 0 0 70px rgba(255, 93, 18, 0.12),
+        0 0 0 1px rgba(255, 159, 55, 0.12),
+        0 18px 40px rgba(0, 0, 0, 0.48);
+    }
+
+    .multiplier-engine::before {
+      content: "";
+      position: absolute;
+      left: 6%;
+      right: 6%;
+      top: 18px;
+      height: 176px;
+      border-radius: 300px 300px 20px 20px;
+      background:
+        conic-gradient(from 222deg at 50% 88%, rgba(249, 93, 32, 0.92) 0deg 32deg, rgba(246, 176, 54, 0.78) 32deg 86deg, rgba(145, 49, 28, 0.88) 86deg 142deg, transparent 142deg 360deg);
+      clip-path: polygon(0 0, 100% 0, 96% 83%, 4% 83%);
+      opacity: 0.72;
+      filter: drop-shadow(0 0 20px rgba(246, 93, 26, 0.32));
+    }
+
+    .multiplier-engine::after {
+      content: "";
+      position: absolute;
+      left: 15%;
+      right: 15%;
+      top: 74px;
+      height: 80px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(0, 0, 0, 0.64), rgba(0, 0, 0, 0));
+      opacity: 0.78;
+    }
+
+    .engine-title {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      z-index: 4;
+      min-width: 250px;
+      padding: 7px 22px 9px;
+      border: 1px solid rgba(245, 157, 64, 0.62);
+      border-radius: 4px;
+      background: linear-gradient(180deg, #2b2118, #0d0c0a);
+      color: #ffbd64;
+      font-size: 26px;
+      font-weight: 950;
+      letter-spacing: 0.12em;
+      text-align: center;
+      transform: translate(-50%, -2px);
+      text-shadow: 0 0 16px rgba(255, 103, 28, 0.5);
+    }
+
+    .multiplier-value {
+      position: relative;
+      z-index: 5;
+      margin-top: 64px;
+      color: #ffcc68;
+      font-family: Impact, "Arial Black", "Microsoft YaHei", sans-serif;
+      font-size: clamp(72px, 8.5vw, 128px);
+      line-height: 0.86;
+      text-align: center;
+      text-shadow:
+        0 3px 0 #6a190d,
+        0 0 12px rgba(255, 70, 22, 0.85),
+        0 0 38px rgba(255, 139, 34, 0.55);
+    }
+
+    .multiplier-label {
+      position: relative;
+      z-index: 5;
+      margin-top: 12px;
+      color: #c8a77b;
+      font-size: 16px;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .engine-scale {
+      position: absolute;
+      z-index: 4;
+      top: 54px;
+      display: grid;
+      gap: 7px;
+      color: #ffd36f;
+      font-size: 20px;
+      font-weight: 950;
+      text-shadow: 0 0 12px rgba(255, 85, 21, 0.8);
+    }
+
+    .left-scale {
+      left: 9%;
+      transform: rotate(-18deg);
+    }
+
+    .right-scale {
+      right: 8%;
+      transform: rotate(12deg);
+      color: #ff7a4d;
+    }
+
+    .chain-panel {
+      position: absolute;
+      left: 6%;
+      right: 6%;
+      bottom: 14px;
+      z-index: 6;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 14px;
+      align-items: center;
+      min-height: 42px;
+      padding: 8px 16px;
+      border: 1px solid rgba(231, 128, 43, 0.45);
+      border-radius: 4px;
+      background: rgba(12, 11, 9, 0.78);
+      color: #d7c0a0;
+      font-weight: 900;
+    }
+
+    .chain-track {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .chain-track i {
+      height: 18px;
+      border: 1px solid rgba(255, 145, 42, 0.56);
+      clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%, 12px 50%);
+      background:
+        linear-gradient(90deg, rgba(255, 195, 65, 0.25), rgba(255, 116, 30, 0.2));
+      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.58);
+    }
+
+    .chain-track i:nth-child(-n + 0) {
+      background: transparent;
+    }
+
+    .chain-track i {
+      opacity: 0.42;
+    }
+
+    .chain-track i:nth-child(1) {
+      opacity: calc(var(--chain-fill) * 5);
+    }
+
+    .chain-track i:nth-child(2) {
+      opacity: calc((var(--chain-fill) * 5 - 1) * 1);
+    }
+
+    .chain-track i:nth-child(3) {
+      opacity: calc((var(--chain-fill) * 5 - 2) * 1);
+    }
+
+    .chain-track i:nth-child(4) {
+      opacity: calc((var(--chain-fill) * 5 - 3) * 1);
+    }
+
+    .chain-track i:nth-child(5) {
+      opacity: calc((var(--chain-fill) * 5 - 4) * 1);
+    }
+
+    .chain-track i {
+      background: linear-gradient(90deg, #ffe36d, #ff8a22);
+      filter: drop-shadow(0 0 8px rgba(255, 125, 28, 0.7));
+    }
+
+    .engine-readouts {
+      display: grid;
+      gap: 8px;
+    }
+
+    .readout {
+      min-height: 66px;
+      padding: 10px 12px;
+      border-color: rgba(255, 147, 51, 0.34);
+      background: linear-gradient(180deg, rgba(55, 36, 19, 0.92), rgba(12, 12, 10, 0.96));
+    }
+
+    .readout span {
+      display: block;
+      color: #b49a75;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .readout strong {
+      display: block;
+      margin-top: 3px;
+      color: #ffbf66;
+      font-size: clamp(16px, 1.65vw, 24px);
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .readout.hot strong {
+      color: #ff6b3b;
+    }
+
+    .machine {
+      margin-top: 0;
+      padding: 20px 22px;
+      border-color: rgba(255, 119, 33, 0.34);
+      background:
+        radial-gradient(circle at 50% 100%, rgba(255, 80, 23, 0.18), transparent 44%),
+        linear-gradient(90deg, rgba(13, 13, 10, 0.98), rgba(34, 26, 16, 0.96), rgba(13, 13, 10, 0.98));
+    }
+
+    .machine::before {
+      content: "";
+      position: absolute;
+      left: 20px;
+      right: 20px;
+      top: 52%;
+      height: 22px;
+      border-radius: 999px;
+      background:
+        linear-gradient(90deg, transparent, rgba(255, 84, 17, 0.82), transparent),
+        repeating-linear-gradient(90deg, #20160d 0 24px, #5b3218 24px 32px);
+      box-shadow: 0 0 24px rgba(255, 87, 22, 0.52);
+      opacity: 0.72;
+    }
+
+    .slots {
+      position: relative;
+      z-index: 2;
+      gap: 20px;
+    }
+
+    .slot-wrap {
+      position: relative;
+    }
+
+    .slot-wrap:not(:last-child)::after {
+      content: "➜";
+      position: absolute;
+      right: -24px;
+      top: 50%;
+      z-index: 6;
+      color: #ff8a21;
+      font-size: 34px;
+      font-weight: 950;
+      transform: translateY(-50%);
+      text-shadow: 0 0 10px #ff5b16, 0 0 24px rgba(255, 110, 24, 0.82);
+      pointer-events: none;
+    }
+
+    .slot-label {
+      min-height: 30px;
+      border: 1px solid rgba(227, 128, 42, 0.45);
+      border-bottom: 0;
+      border-radius: 5px 5px 0 0;
+      background: linear-gradient(180deg, rgba(58, 38, 20, 0.94), rgba(12, 12, 10, 0.86));
+      color: #d8b57b;
+      line-height: 30px;
+      margin-bottom: 0;
+    }
+
+    .slot {
+      border-color: rgba(198, 105, 38, 0.72);
+      box-shadow:
+        inset 0 0 0 5px rgba(0, 0, 0, 0.34),
+        inset 0 0 42px rgba(0, 0, 0, 0.64),
+        0 0 18px rgba(255, 104, 21, 0.14);
+    }
+
+    .slot.active {
+      border-color: #ffbd55;
+      box-shadow:
+        inset 0 0 0 5px rgba(0, 0, 0, 0.34),
+        0 0 30px rgba(255, 118, 24, 0.78);
+    }
+
+    .lower-console {
+      display: grid;
+      grid-template-columns: minmax(150px, 0.55fr) minmax(450px, 1.45fr);
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .trend-box {
+      display: grid;
+      align-content: center;
+      gap: 8px;
+      padding: 18px;
+      border-color: rgba(181, 113, 61, 0.42);
+    }
+
+    .trend-box strong {
+      color: #ff6442;
+      font-size: 32px;
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .trend-box span {
+      color: #9e927d;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .pressure-console {
+      padding: 12px 18px 6px;
+      border-color: rgba(183, 76, 57, 0.42);
+      background:
+        radial-gradient(circle at 72% 64%, rgba(255, 35, 30, 0.18), transparent 32%),
+        linear-gradient(180deg, rgba(31, 23, 18, 0.96), rgba(10, 10, 9, 0.98));
+    }
+
+    .console-title {
+      position: relative;
+      z-index: 6;
+      color: #e0c69e;
+      font-size: 14px;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .pressure-console .meter-shell {
+      height: 172px;
+      max-width: 520px;
+    }
+
+    .pressure-console .meter-center {
+      top: 58%;
+    }
+
+    .pressure-console .pressure-value {
+      font-size: clamp(42px, 5vw, 68px);
+    }
+
+    .pressure-console .danger-sign {
+      right: 18px;
+      top: 48px;
+      min-width: 118px;
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+
+    .right {
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) auto auto;
+    }
+
+    .rack {
+      min-height: 0;
+    }
+
+    .rack-list {
+      max-height: calc(100vh - 374px);
+    }
+
+    .lever-panel {
+      position: relative;
+      min-height: 196px;
+      padding: 18px 14px 12px 88px;
+      border-color: rgba(239, 111, 39, 0.52);
+      background:
+        linear-gradient(135deg, rgba(51, 35, 23, 0.95), rgba(9, 9, 8, 0.98));
+    }
+
+    .lever-panel::before {
+      content: "";
+      position: absolute;
+      left: 27px;
+      top: 34px;
+      width: 18px;
+      height: 120px;
+      border: 2px solid rgba(255, 147, 55, 0.45);
+      border-radius: 12px;
+      background: linear-gradient(180deg, #5c3c25, #16110d);
+      transform: rotate(14deg);
+      transform-origin: bottom center;
+      box-shadow: 0 0 20px rgba(255, 83, 20, 0.26);
+    }
+
+    .lever-panel::after {
+      content: "";
+      position: absolute;
+      left: 18px;
+      top: 20px;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 32%, #ff7a45, #7e1d13 62%, #210b08);
+      box-shadow: 0 0 18px rgba(255, 74, 28, 0.65);
+    }
+
+    .lever-panel .pull {
+      width: 100%;
+      min-height: 118px;
+      font-size: clamp(34px, 3.4vw, 54px);
+    }
+
+    .lever-panel .pull span {
+      display: block;
+      margin-top: 4px;
+      color: #f4c482;
+      font-size: 20px;
+      letter-spacing: 0.16em;
+    }
+
+    .lever-note {
+      margin-top: 12px;
+      color: #b19c80;
+      font-size: 13px;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .preview {
+      min-height: 150px;
+    }
+
+    .chain-track i {
+      opacity: 0.24;
+      background: linear-gradient(90deg, rgba(255, 195, 65, 0.22), rgba(255, 116, 30, 0.2));
+      filter: none;
+    }
+
+    .chain-track i.lit {
+      opacity: 1;
+      background: linear-gradient(90deg, #ffe36d, #ff8a22);
+      filter: drop-shadow(0 0 8px rgba(255, 125, 28, 0.7));
+    }
+
+    body.bg-mode {
+      background: #020201;
+      overflow: auto;
+    }
+
+    body.bg-mode::before {
+      opacity: 0.12;
+    }
+
+    body.bg-mode .shell {
+      position: relative;
+      width: min(1536px, 100vw);
+      min-height: auto;
+      aspect-ratio: 1536 / 1024;
+      padding: 0;
+      background:
+        linear-gradient(rgba(0, 0, 0, 0.03), rgba(0, 0, 0, 0.03)),
+        var(--effect-bg) center / 100% 100% no-repeat;
+      overflow: hidden;
+    }
+
+    body.bg-mode .game {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+    }
+
+    body.bg-mode .left,
+    body.bg-mode .center,
+    body.bg-mode .right {
+      position: absolute;
+      min-width: 0;
+    }
+
+    body.bg-mode .panel,
+    body.bg-mode .card,
+    body.bg-mode .slot {
+      box-shadow: none;
+    }
+
+    body.bg-mode .panel::after,
+    body.bg-mode .slot::after {
+      opacity: 0;
+    }
+
+    body.bg-mode .left {
+      left: 6.9%;
+      top: 25.9%;
+      width: 12.7%;
+      height: 65.8%;
+    }
+
+    body.bg-mode .brand {
+      position: absolute;
+      left: 0;
+      top: -24%;
+      width: 150%;
+      height: 20%;
+      min-height: 0;
+      padding: 0;
+      border: 0;
+    }
+
+    body.bg-mode .version {
+      display: none;
+    }
+
+    body.bg-mode .title {
+      font-size: clamp(26px, 2.4vw, 42px);
+      color: #ded5bd;
+      text-shadow: 0 0 10px rgba(255, 166, 64, 0.35), 0 2px 0 #000;
+    }
+
+    body.bg-mode .subtitle {
+      margin-top: 3px;
+      font-size: clamp(9px, 0.9vw, 14px);
+      letter-spacing: 0.22em;
+    }
+
+    body.bg-mode .stats {
+      position: absolute;
+      left: 2%;
+      right: 2%;
+      top: 0;
+      height: 43%;
+      display: block;
+      margin: 0;
+    }
+
+    body.bg-mode .stat {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      min-height: 0;
+      height: 22%;
+      padding: 4% 6% 0;
+      border: 0;
+      background: transparent;
+    }
+
+    body.bg-mode .stat:nth-child(1) { top: 0; }
+    body.bg-mode .stat:nth-child(2) { top: 25%; }
+    body.bg-mode .stat:nth-child(3) { top: 50%; }
+    body.bg-mode .stat:nth-child(4) { top: 75%; }
+
+    body.bg-mode .label {
+      height: auto;
+      margin: 0;
+      color: #c9b58d;
+      font-size: clamp(10px, 0.8vw, 14px);
+      text-shadow: 0 0 6px #000;
+    }
+
+    body.bg-mode .value {
+      font-size: clamp(20px, 2.35vw, 36px);
+      line-height: 1;
+      color: #ff8b3c;
+      text-shadow: 0 0 8px rgba(255, 90, 24, 0.7);
+    }
+
+    body.bg-mode .value.small {
+      color: #d8d0bb;
+    }
+
+    body.bg-mode .run-meta {
+      display: none;
+    }
+
+    body.bg-mode .codex-button {
+      position: absolute;
+      left: 4%;
+      top: 49%;
+      width: 94%;
+      min-height: 6%;
+      opacity: 0;
+    }
+
+    body.bg-mode .log {
+      position: absolute;
+      left: 2%;
+      right: 2%;
+      bottom: 0;
+      height: 41.5%;
+      padding: 13% 6% 4%;
+      border: 0;
+      background: transparent;
+    }
+
+    body.bg-mode .log-title {
+      position: absolute;
+      left: 6%;
+      top: 5%;
+      display: block;
+      color: #d4bd8c;
+      font-size: clamp(12px, 1vw, 17px);
+      text-shadow: 0 0 6px #000;
+    }
+
+    body.bg-mode .log-list div {
+      font-size: clamp(11px, 0.95vw, 15px);
+      text-shadow: 0 0 6px #000;
+    }
+
+    body.bg-mode .center {
+      left: 20.2%;
+      top: 3.1%;
+      width: 59.1%;
+      height: 92.5%;
+      display: block;
+    }
+
+    body.bg-mode .topbar {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 33.8%;
+      display: block;
+      min-height: 0;
+    }
+
+    body.bg-mode .multiplier-engine {
+      position: absolute;
+      left: 18.5%;
+      top: 0;
+      width: 58.8%;
+      height: 100%;
+      min-height: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      overflow: visible;
+    }
+
+    body.bg-mode .multiplier-engine::before,
+    body.bg-mode .multiplier-engine::after,
+    body.bg-mode .engine-scale,
+    body.bg-mode .multiplier-label,
+    body.bg-mode .chain-panel span {
+      display: none;
+    }
+
+    body.bg-mode .engine-title {
+      display: block;
+      top: -1%;
+      min-width: 43%;
+      padding: 1.2% 4%;
+      border: 0;
+      background: transparent;
+      font-size: clamp(18px, 1.9vw, 31px);
+      color: #e7c07a;
+      text-shadow: 0 0 8px rgba(255, 150, 56, 0.55), 0 2px 0 #000;
+    }
+
+    body.bg-mode .multiplier-value {
+      position: absolute;
+      left: 6%;
+      top: 36%;
+      width: 78%;
+      margin: 0;
+      font-size: clamp(46px, 6vw, 92px);
+      line-height: 1;
+      color: #ffd46f;
+      text-align: center;
+    }
+
+    body.bg-mode .chain-panel {
+      left: -3%;
+      right: -3%;
+      bottom: -3.2%;
+      min-height: 9%;
+      padding: 0;
+      grid-template-columns: 1fr auto;
+      border: 0;
+      background: transparent;
+    }
+
+    body.bg-mode .chain-track i {
+      height: clamp(10px, 1.35vw, 19px);
+    }
+
+    body.bg-mode .engine-readouts {
+      position: absolute;
+      left: 80.5%;
+      top: 25%;
+      width: 15.5%;
+      height: 65%;
+      display: grid;
+      grid-template-rows: repeat(3, 1fr);
+      gap: 4.5%;
+    }
+
+    body.bg-mode .readout {
+      min-height: 0;
+      padding: 18% 8% 0;
+      border: 0;
+      background: transparent;
+    }
+
+    body.bg-mode .readout span {
+      opacity: 0;
+    }
+
+    body.bg-mode .readout strong {
+      margin-top: 0;
+      font-size: clamp(15px, 1.75vw, 26px);
+      color: #ffd183;
+      text-shadow: 0 0 8px rgba(255, 110, 28, 0.7);
+    }
+
+    body.bg-mode .toolbar {
+      position: absolute;
+      right: 1%;
+      top: 2%;
+      width: 18%;
+      height: 15%;
+      padding: 0;
+      justify-content: space-between;
+    }
+
+    body.bg-mode .icon-button {
+      width: clamp(28px, 2.8vw, 42px);
+      height: clamp(28px, 2.8vw, 42px);
+      background: transparent;
+      border: 0;
+    }
+
+    body.bg-mode .machine {
+      position: absolute;
+      left: 2.6%;
+      top: 36.6%;
+      width: 94.2%;
+      height: 33.5%;
+      margin: 0;
+      padding: 2.5% 2.7%;
+      border: 0;
+      background: transparent;
+      overflow: visible;
+    }
+
+    body.bg-mode .machine::before {
+      display: none;
+    }
+
+    body.bg-mode .slots {
+      height: 100%;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4.1%;
+      overflow: visible;
+    }
+
+    body.bg-mode .slot-label {
+      height: 10%;
+      min-height: 0;
+      line-height: 1.2;
+      border: 0;
+      background: transparent;
+      opacity: 0;
+    }
+
+    body.bg-mode .slot {
+      min-height: 0;
+      height: 86%;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    body.bg-mode .slot.empty::before {
+      color: rgba(255, 211, 118, 0.5);
+      text-shadow: 0 0 8px rgba(255, 114, 24, 0.55);
+    }
+
+    body.bg-mode .slot-wrap:not(:last-child)::after {
+      right: -12%;
+      color: #ff8a21;
+      font-size: clamp(22px, 2.8vw, 42px);
+    }
+
+    body.bg-mode .card {
+      width: 96%;
+      min-height: 84%;
+      margin: 0 auto;
+      box-shadow: 0 0 16px rgba(255, 100, 24, 0.22);
+    }
+
+    body.bg-mode .card.in-rack {
+      min-height: clamp(78px, 8.2vh, 92px);
+      width: 100%;
+      grid-template-columns: 42px 1fr;
+      gap: 7px;
+      padding: 6px 7px;
+    }
+
+    body.bg-mode .card.in-rack .module-icon {
+      width: 40px;
+      height: 40px;
+    }
+
+    body.bg-mode .card.in-rack .module-name {
+      font-size: clamp(12px, 0.9vw, 15px);
+      margin-bottom: 2px;
+    }
+
+    body.bg-mode .card.in-rack .module-desc {
+      font-size: clamp(9px, 0.68vw, 11px);
+      line-height: 1.2;
+    }
+
+    body.bg-mode .card.in-rack .module-meta,
+    body.bg-mode .card.in-rack .module-trigger {
+      font-size: clamp(9px, 0.68vw, 11px);
+      margin-top: 3px;
+    }
+
+    body.bg-mode .card.in-rack .phase-badge {
+      min-height: 16px;
+      margin-bottom: 3px;
+      padding: 1px 5px;
+      font-size: clamp(8px, 0.62vw, 10px);
+    }
+
+    body.bg-mode .lower-console {
+      position: absolute;
+      left: 1%;
+      top: 73.3%;
+      width: 84.7%;
+      height: 25.2%;
+      display: grid;
+      grid-template-columns: 22% 1fr;
+      gap: 3%;
+    }
+
+    body.bg-mode .trend-box {
+      padding: 42% 9% 0;
+      border: 0;
+      background: transparent;
+    }
+
+    body.bg-mode .trend-box .preview-title,
+    body.bg-mode .trend-box span {
+      display: none;
+    }
+
+    body.bg-mode .trend-box strong {
+      font-size: clamp(22px, 2.7vw, 42px);
+      color: #ff6c44;
+      text-shadow: 0 0 8px rgba(255, 68, 24, 0.7);
+    }
+
+    body.bg-mode .pressure-console {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      overflow: visible;
+    }
+
+    body.bg-mode .console-title,
+    body.bg-mode .pressure-console .danger-sign,
+    body.bg-mode .meter-mark {
+      display: none;
+    }
+
+    body.bg-mode .pressure-console .meter-shell {
+      width: 100%;
+      height: 100%;
+      max-width: none;
+    }
+
+    body.bg-mode .meter-arc,
+    body.bg-mode .needle {
+      opacity: 0;
+    }
+
+    body.bg-mode .pressure-console .meter-center {
+      left: 52%;
+      top: 60%;
+    }
+
+    body.bg-mode .pressure-console .pressure-value {
+      font-size: clamp(30px, 4.7vw, 72px);
+      color: #ff6143;
+      text-shadow: 0 0 12px rgba(255, 55, 28, 0.8);
+    }
+
+    body.bg-mode .pressure-label {
+      color: #f0d1ae;
+    }
+
+    body.bg-mode .right {
+      right: 8.2%;
+      top: 13.3%;
+      width: 12.4%;
+      height: 76%;
+      display: block;
+    }
+
+    body.bg-mode .rack {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 59.5%;
+      padding: 11% 5% 2%;
+      border: 0;
+      background: transparent;
+    }
+
+    body.bg-mode .rack-head {
+      height: 6%;
+      margin-bottom: 3%;
+    }
+
+    body.bg-mode .rack-title {
+      opacity: 1;
+      color: #d8bd89;
+      font-size: clamp(12px, 1.05vw, 18px);
+      text-shadow: 0 0 6px #000;
+    }
+
+    body.bg-mode .small-button {
+      opacity: 0;
+    }
+
+    body.bg-mode .rack-list {
+      max-height: 89%;
+      gap: 8px;
+    }
+
+    body.bg-mode .lever-panel {
+      position: absolute;
+      left: -27%;
+      top: 70.5%;
+      width: 125%;
+      height: 18.5%;
+      min-height: 0;
+      padding: 3% 5% 0 37%;
+      border: 0;
+      background: transparent;
+    }
+
+    body.bg-mode .lever-panel::before,
+    body.bg-mode .lever-panel::after,
+    body.bg-mode .lever-note {
+      display: none;
+    }
+
+    body.bg-mode .lever-panel .pull {
+      min-height: 76%;
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+      color: rgba(255, 213, 142, 0.92);
+      text-shadow: 0 0 10px rgba(255, 99, 24, 0.8);
+    }
+
+    body.bg-mode .lever-panel .pull::before,
+    body.bg-mode .lever-panel .pull::after {
+      display: none;
+    }
+
+    body.bg-mode .preview {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      height: 12%;
+      min-height: 0;
+      padding: 3% 6% 0;
+      border: 0;
+      background: transparent;
+    }
+
+    body.bg-mode .preview-head {
+      display: none;
+    }
+
+    body.bg-mode .preview-row {
+      font-size: clamp(10px, 0.9vw, 14px);
+    }
+
+    @keyframes bodyPulse {
+      0%, 100% {
+        filter: saturate(1.03);
+      }
+      50% {
+        filter: saturate(1.3) contrast(1.08);
+      }
+    }
+
+    @keyframes detonate {
+      0%, 100% {
+        transform: translateX(0);
+        filter: brightness(1);
+      }
+      25% {
+        transform: translateX(-9px);
+        filter: brightness(1.55) saturate(1.6);
+      }
+      50% {
+        transform: translateX(11px);
+      }
+      75% {
+        transform: translateX(-7px);
+      }
+    }
+
+    @media (max-width: 1180px) {
+      .game {
+        grid-template-columns: 190px minmax(560px, 1fr);
+      }
+
+      .right {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: 1fr 300px;
+      }
+
+      .rack-list {
+        grid-template-columns: repeat(5, minmax(150px, 1fr));
+        max-height: none;
+        overflow-x: auto;
+      }
+    }
+
+    @media (max-width: 860px) {
+      .shell {
+        padding: 10px;
+      }
+
+      .game {
+        display: block;
+      }
+
+      .brand {
+        min-height: 0;
+      }
+
+      .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .log {
+        height: 180px;
+      }
+
+      .topbar {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar {
+        display: none;
+      }
+
+      .slots {
+        grid-template-columns: repeat(5, minmax(108px, 1fr));
+        overflow-x: auto;
+        padding-bottom: 6px;
+      }
+
+      .machine-footer {
+        grid-template-columns: 1fr;
+      }
+
+      .pipe {
+        display: none;
+      }
+
+      .right {
+        display: block;
+      }
+
+      .rack-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .preview {
+        margin-top: 12px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .stats,
+      .rack-list {
+        grid-template-columns: 1fr;
+      }
+
+      .meter-shell {
+        height: 150px;
+      }
+
+      .danger-sign {
+        position: static;
+        margin: 8px auto 0;
+      }
+    }
+  </style>
 </head>
 <body>
-  <h1>Joker-like Web MVP（无美术版）</h1>
-  <div class="panel mono" id="stats"></div>
-  <div class="panel">
-    <h3>手牌（点选 5 张）</h3>
-    <div class="row" id="hand"></div>
-    <button id="playBtn" disabled>结算本回合</button>
+  <main class="shell" id="shell">
+    <section class="game">
+      <aside class="left">
+        <div class="brand">
+          <div class="version">DEMO v0.1.0</div>
+          <h1 class="title">深渊引擎</h1>
+          <div class="subtitle">ABYSS ENGINE</div>
+        </div>
+
+        <div class="stats">
+          <div class="panel stat">
+            <div class="label">当前资金</div>
+            <div class="value" id="cash">¥ 0</div>
+          </div>
+          <div class="panel stat">
+            <div class="label">目标金额</div>
+            <div class="value small" id="target">¥ 100</div>
+            <div class="run-meta" id="targetMeta">本轮必须达成</div>
+          </div>
+          <div class="panel stat">
+            <div class="label">当前轮次</div>
+            <div class="value small" id="round">1 / 8</div>
+          </div>
+          <div class="panel stat">
+            <div class="label">最高连胜</div>
+            <div class="value small" id="best">0</div>
+          </div>
+        </div>
+
+        <button class="codex-button" id="codexButton" type="button">
+          <span class="mini-icon" aria-hidden="true"></span>
+          <strong>模块图鉴</strong>
+        </button>
+
+        <section class="panel log">
+          <div class="log-title">运行日志</div>
+          <div class="log-list" id="log"></div>
+        </section>
+      </aside>
+
+      <section class="center">
+        <div class="topbar">
+          <section class="panel multiplier-engine">
+            <div class="engine-title">倍率引擎</div>
+            <div class="engine-scale left-scale">
+              <span>x1</span>
+              <span>x2</span>
+              <span>x4</span>
+              <span>x8</span>
+              <span>x16</span>
+            </div>
+            <div class="engine-scale right-scale">
+              <span>x32</span>
+              <span>x64</span>
+              <span>x128</span>
+              <span>x256</span>
+            </div>
+            <div class="multiplier-value" id="multiplierDisplay">x1.00</div>
+            <div class="multiplier-label">当前总倍率</div>
+            <div class="chain-panel">
+              <span>连锁增幅</span>
+              <div class="chain-track" aria-hidden="true">
+                <i></i><i></i><i></i><i></i><i></i>
+              </div>
+              <strong id="chainText">0 / 5</strong>
+            </div>
+          </section>
+
+          <aside class="engine-readouts">
+            <div class="panel readout">
+              <span>收益增幅</span>
+              <strong id="yieldBoost">+0%</strong>
+            </div>
+            <div class="panel readout">
+              <span>点火序列</span>
+              <strong id="chainGain">+0.00</strong>
+            </div>
+            <div class="panel readout hot">
+              <span>过载加成</span>
+              <strong id="overloadGain">+0.00</strong>
+            </div>
+          </aside>
+
+          <nav class="toolbar" aria-label="工具">
+            <button class="icon-button" id="soundButton" type="button" title="音效">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 10v4h4l5 4V6L8 10H4Z"></path>
+                <path d="M17 9a4 4 0 0 1 0 6"></path>
+                <path d="M19.5 6.5a8 8 0 0 1 0 11"></path>
+              </svg>
+            </button>
+            <button class="icon-button" id="settingsButton" type="button" title="重开">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M21 12a9 9 0 1 1-3-6.7"></path>
+                <path d="M21 3v6h-6"></path>
+              </svg>
+            </button>
+            <button class="icon-button" id="helpButton" type="button" title="概率">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9.2 9a3 3 0 1 1 5.1 2.1c-1.4 1.1-2.3 1.7-2.3 3.4"></path>
+                <path d="M12 18h.01"></path>
+                <circle cx="12" cy="12" r="10"></circle>
+              </svg>
+            </button>
+          </nav>
+        </div>
+
+        <section class="panel machine">
+          <div class="slots" id="slots"></div>
+        </section>
+
+        <section class="lower-console">
+          <div class="panel trend-box">
+            <div class="preview-title">压力趋势</div>
+            <strong id="pressureTrend">+0</strong>
+            <span>预计变化</span>
+          </div>
+
+          <section class="panel pressure-console">
+            <div class="console-title">压力预览（放置后预估）</div>
+            <div class="meter-shell">
+              <div class="meter-arc"></div>
+              <div class="meter-mark left">0</div>
+              <div class="meter-mark mid">50</div>
+              <div class="meter-mark right">100</div>
+              <div class="needle" id="needle"></div>
+              <div class="meter-center">
+                <div class="pressure-value" id="pressure">0</div>
+                <div class="pressure-label">/ 100</div>
+              </div>
+              <div class="danger-sign">
+                危险区
+                <span>压力 > 100 时引擎将熔毁</span>
+              </div>
+            </div>
+          </section>
+        </section>
+      </section>
+
+      <aside class="right">
+        <section class="panel rack">
+          <div class="rack-head">
+            <div class="rack-title">可用模块</div>
+            <button class="small-button" id="refreshButton" type="button">换一组 [R]</button>
+          </div>
+          <div class="rack-list" id="rack"></div>
+        </section>
+
+        <section class="panel lever-panel">
+          <button class="pull" id="pullButton" type="button">拉 杆<span>PULL</span></button>
+          <div class="lever-note">按下拉杆，启动引擎</div>
+        </section>
+
+        <section class="panel preview">
+          <div class="preview-head">
+            <div class="preview-title">本轮预估</div>
+          </div>
+          <div class="preview-grid">
+            <div class="preview-row">
+              <span>预计收益</span>
+              <strong id="previewProfit">¥ 0</strong>
+            </div>
+            <div class="preview-row danger">
+              <span>预计最终压力</span>
+              <strong id="previewPressure">0 / 100</strong>
+            </div>
+            <div class="preview-row">
+              <span>爆炸风险</span>
+              <strong id="previewRisk">未知</strong>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h2 id="modalTitle">引擎熔毁</h2>
+      <p id="modalBody">压力越过红线，资金化成了灰。</p>
+      <div class="modal-actions">
+        <button class="modal-button" id="restartButton" type="button">重新开机</button>
+        <button class="modal-button" id="continueButton" type="button">继续查看</button>
+      </div>
+    </div>
   </div>
-  <div class="panel">
-    <h3>商店（每张 $4）</h3>
-    <div class="row" id="shop"></div>
-  </div>
-  <div class="panel">
-    <h3>日志</h3>
-    <div id="log"></div>
-  </div>
-  <script src="./app.js"></script>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
+    const slotCount = 5;
+    const EVENTS = {
+      ON_RESOLVE: "ON_RESOLVE",
+      ON_EXPLODE: "ON_EXPLODE",
+      ON_HIGH_PRESSURE: "ON_HIGH_PRESSURE"
+    };
+    const triggerLabels = {
+      ON_RESOLVE: "结算触发",
+      ON_EXPLODE: "爆炸触发",
+      ON_HIGH_PRESSURE: "红区触发"
+    };
+    const PHASES = {
+      kinetic: { name: "动能", icon: "⚙", color: "#f0a349" },
+      pulse: { name: "脉冲", icon: "⚡", color: "#55d8ff" },
+      thermal: { name: "热熔", icon: "▲", color: "#ff6d4a" },
+      toxic: { name: "腐蚀", icon: "☣", color: "#63e47d" }
+    };
+    const SEQUENCES = {
+      single: { name: "单缸点火", base: 30, mult: 1, limit: 0 },
+      pair: { name: "双轨并联", base: 180, mult: 1.25, limit: 0 },
+      trinity: { name: "三位一体", base: 420, mult: 1.8, limit: 0 },
+      oscillation: { name: "交流震荡", base: 520, mult: 3.2, limit: 0 },
+      asymmetric: { name: "非对称负载", base: 850, mult: 2.4, limit: 20 },
+      pure: { name: "纯净回路", base: 1200, mult: 10, limit: 0 }
+    };
+
+    const catalog = [
+      {
+        id: "coil",
+        name: "高压涡轮",
+        tag: "异化",
+        kind: "greed",
+        phase: "kinetic",
+        trigger: EVENTS.ON_RESOLVE,
+        desc: "压力越高，倍率越凶。",
+        meta: "压力 +20  倍率 x(压力x0.10)",
+        style: ["#412412", "#130f0b", "#f0a349", "#eaa84c", "#9b5523"],
+        icon: "turbine",
+        apply(run) {
+          run.pressure += 20;
+          const factor = Math.max(1.05, run.pressure * 0.1);
+          run.multiplier *= factor;
+          return `涡轮咬合：倍率 x${factor.toFixed(1)}，压力 +20`;
+        },
+        preview(run) {
+          run.pressure += 20;
+          run.multiplier *= Math.max(1.05, run.pressure * 0.1);
+        }
+      },
+      {
+        id: "coolant",
+        name: "冷却液",
+        tag: "稳定",
+        kind: "stable",
+        phase: "toxic",
+        trigger: EVENTS.ON_RESOLVE,
+        desc: "大量降低压力。",
+        meta: "压力 -50",
+        style: ["#18351d", "#0d1510", "#63e47d", "#77db7c", "#3e8d50"],
+        icon: "canister",
+        apply(run) {
+          const before = run.pressure;
+          run.pressure = Math.max(0, run.pressure - 50);
+          return `冷却液注入：压力 ${formatSigned(run.pressure - before)}`;
+        },
+        preview(run) {
+          run.pressure = Math.max(0, run.pressure - 50);
+        }
+      },
+      {
+        id: "stabilizer",
+        name: "稳压器",
+        tag: "稳定",
+        kind: "stable",
+        phase: "pulse",
+        trigger: EVENTS.ON_RESOLVE,
+        desc: "先稳住，再榨钱。",
+        meta: "压力 -28  基础收益 +90",
+        style: ["#182f34", "#0b1316", "#5dd3dc", "#61d1da", "#2f848a"],
+        icon: "dial",
+        apply(run) {
+          run.pressure = Math.max(0, run.pressure - 28);
+          run.base += 90;
+          return "稳压器锁定：压力 -28，基础收益 +90";
+        },
+        preview(run) {
+          run.pressure = Math.max(0, run.pressure - 28);
+          run.base += 90;
+        }
+      },
+      {
+        id: "fuse",
+        name: "熔断器",
+        tag: "防御",
+        kind: "stable",
+        phase: "pulse",
+        trigger: EVENTS.ON_RESOLVE,
+        guardTrigger: EVENTS.ON_EXPLODE,
+        desc: "防爆一次，但会烧毁。",
+        meta: "压力 +8  防爆 x1",
+        style: ["#26323a", "#0d1012", "#56c2ea", "#76d4ea", "#2a7692"],
+        icon: "skull",
+        apply(run) {
+          run.pressure += 8;
+          run.fuses += 1;
+          return "熔断器接入：压力 +8，防爆 x1";
+        },
+        preview(run) {
+          run.pressure += 8;
+          run.fuses += 1;
+        }
+      },
+      {
+        id: "loan",
+        name: "高利贷",
+        tag: "赌狗",
+        kind: "greed",
+        phase: "thermal",
+        trigger: EVENTS.ON_RESOLVE,
+        desc: "本轮暴涨，下轮更烫。",
+        meta: "倍率 x5  下轮基础压力 +30",
+        style: ["#3e2510", "#150d08", "#ffb348", "#f2a545", "#ad5a25"],
+        icon: "coin",
+        apply(run) {
+          run.multiplier *= 5;
+          run.nextDebt += 30;
+          run.pressure += 10;
+          return "高利贷到账：倍率 x5，下轮基础压力 +30";
+        },
+        preview(run) {
+          run.multiplier *= 5;
+          run.nextDebt += 30;
+          run.pressure += 10;
+        }
+      },
+      {
+        id: "overclock",
+        name: "超频器",
+        tag: "赌狗",
+        kind: "greed",
+        phase: "thermal",
+        trigger: EVENTS.ON_RESOLVE,
+        desc: "压力越接近红区，收益越高。",
+        meta: "压力 +18  倍率 +(压力/22)",
+        style: ["#37221e", "#150d0c", "#ff6d4a", "#f07a4b", "#a54434"],
+        icon: "bolt",
+        apply(run) {
+          run.pressure += 18;
+          const boost = Math.max(1.2, 1 + run.pressure / 22);
+          run.multiplier *= boost;
+          return `超频启动：倍率 x${boost.toFixed(1)}，压力 +18`;
+        },
+        preview(run) {
+          run.pressure += 18;
+          run.multiplier *= Math.max(1.2, 1 + run.pressure / 22);
+        }
+      },
+      {
+        id: "blackbox",
+        name: "黑箱",
+        tag: "混沌",
+        kind: "chaos",
+        phase: "toxic",
+        trigger: EVENTS.ON_RESOLVE,
+        desc: "你看不见里面的齿轮。",
+        meta: "压力 +0~60  倍率 x0.8~3.8",
+        style: ["#2b2534", "#100f13", "#b36cf0", "#ba73f6", "#6e4491"],
+        icon: "box",
+        apply(run) {
+          const pressure = randInt(0, 60);
+          const factor = randFloat(0.8, 3.8);
+          run.pressure += pressure;
+          run.multiplier *= factor;
+          return `黑箱展开：倍率 x${factor.toFixed(1)}，压力 +${pressure}`;
+        },
+        preview(run) {
+          run.pressure += 30;
+          run.multiplier *= 2.2;
+          run.risk += 18;
+        }
+      },
+      {
+        id: "unknown",
+        name: "薛定谔模块",
+        tag: "混沌",
+        kind: "chaos",
+        phase: "pulse",
+        trigger: EVENTS.ON_RESOLVE,
+        desc: "可能是神，也可能是雷。",
+        meta: "压力 -20~+80  倍率 x0.4~6",
+        style: ["#352042", "#130d19", "#c463ff", "#c16df7", "#7e419f"],
+        icon: "unknown",
+        apply(run) {
+          const pressure = randInt(-20, 80);
+          const factor = randFloat(0.4, 6);
+          run.pressure = Math.max(0, run.pressure + pressure);
+          run.multiplier *= factor;
+          return `薛定谔坍缩：倍率 x${factor.toFixed(1)}，压力 ${formatSigned(pressure)}`;
+        },
+        preview(run) {
+          run.pressure += 30;
+          run.multiplier *= 3.2;
+          run.risk += 30;
+        }
+      },
+      {
+        id: "redline",
+        name: "红区增压器",
+        tag: "赌狗",
+        kind: "greed",
+        phase: "thermal",
+        trigger: EVENTS.ON_RESOLVE,
+        thresholdTrigger: EVENTS.ON_HIGH_PRESSURE,
+        desc: "站在红线里才够甜。",
+        meta: "压力 +35  红区倍率 x4",
+        style: ["#421714", "#150a08", "#ff563f", "#ff6a4b", "#a8362b"],
+        icon: "gauge",
+        apply(run) {
+          run.pressure += 35;
+          const factor = run.pressure >= 70 ? 4 : 1.35;
+          run.multiplier *= factor;
+          return `红区增压：倍率 x${factor.toFixed(1)}，压力 +35`;
+        },
+        preview(run) {
+          run.pressure += 35;
+          run.multiplier *= run.pressure >= 70 ? 4 : 1.35;
+        }
+      },
+      {
+        id: "ember",
+        name: "余烬保险",
+        tag: "防御",
+        kind: "stable",
+        phase: "kinetic",
+        trigger: EVENTS.ON_RESOLVE,
+        guardTrigger: EVENTS.ON_EXPLODE,
+        desc: "爆了也能捞回一点。",
+        meta: "压力 +12  熔毁保留 50%",
+        style: ["#1b3340", "#0b1215", "#55d8ff", "#5ad0ec", "#2f8198"],
+        icon: "shield",
+        apply(run) {
+          run.pressure += 12;
+          run.insurance = true;
+          return "余烬保险生效：压力 +12，熔毁保留 50%";
+        },
+        preview(run) {
+          run.pressure += 12;
+          run.insurance = true;
+        }
+      }
+    ];
+
+    const state = {
+      cash: 0,
+      pressure: 0,
+      round: 1,
+      best: Number(localStorage.getItem("abyss-best") || 0),
+      baseDebt: 0,
+      hand: [],
+      slots: Array(slotCount).fill(null),
+      selected: null,
+      settling: false,
+      sound: true,
+      log: []
+    };
+
+    const els = {
+      cash: document.getElementById("cash"),
+      target: document.getElementById("target"),
+      targetMeta: document.getElementById("targetMeta"),
+      round: document.getElementById("round"),
+      best: document.getElementById("best"),
+      pressure: document.getElementById("pressure"),
+      needle: document.getElementById("needle"),
+      slots: document.getElementById("slots"),
+      rack: document.getElementById("rack"),
+      pull: document.getElementById("pullButton"),
+      refresh: document.getElementById("refreshButton"),
+      log: document.getElementById("log"),
+      previewProfit: document.getElementById("previewProfit"),
+      previewPressure: document.getElementById("previewPressure"),
+      previewRisk: document.getElementById("previewRisk"),
+      multiplierDisplay: document.getElementById("multiplierDisplay"),
+      yieldBoost: document.getElementById("yieldBoost"),
+      chainGain: document.getElementById("chainGain"),
+      overloadGain: document.getElementById("overloadGain"),
+      chainText: document.getElementById("chainText"),
+      pressureTrend: document.getElementById("pressureTrend"),
+      overlay: document.getElementById("overlay"),
+      modalTitle: document.getElementById("modalTitle"),
+      modalBody: document.getElementById("modalBody"),
+      restart: document.getElementById("restartButton"),
+      continue: document.getElementById("continueButton"),
+      toast: document.getElementById("toast"),
+      sound: document.getElementById("soundButton"),
+      reset: document.getElementById("settingsButton"),
+      help: document.getElementById("helpButton"),
+      codex: document.getElementById("codexButton")
+    };
+
+    let audioContext;
+    let toastTimer;
+
+    function init() {
+      detectEffectBackground();
+      createSlots();
+      newRound(true);
+      bindEvents();
+      render();
+    }
+
+    function detectEffectBackground() {
+      const forced = new URLSearchParams(window.location.search).get("bg");
+      if (forced) {
+        setEffectBackground(forced === "1" ? "effect-bg.png" : forced);
+        return;
+      }
+      const candidates = ["effect-bg.png", "effect-bg.jpg", "abyss-effect.png", "abyss-effect.jpg"];
+      for (const src of candidates) {
+        const image = new Image();
+        image.onload = () => {
+          if (document.body.classList.contains("bg-mode")) return;
+          setEffectBackground(src);
+        };
+        image.src = `${src}?v=${Date.now()}`;
+      }
+    }
+
+    function setEffectBackground(src) {
+      document.documentElement.style.setProperty("--effect-bg", `url("${src}")`);
+      document.body.classList.add("bg-mode");
+      render();
+    }
+
+    function bindEvents() {
+      els.pull.addEventListener("click", pullLever);
+      els.refresh.addEventListener("click", () => {
+        if (state.settling) return;
+        drawHand();
+        state.slots = Array(slotCount).fill(null);
+        state.selected = null;
+        logLine("换了一组模块。", "warn");
+        render();
+      });
+      els.restart.addEventListener("click", restartGame);
+      els.continue.addEventListener("click", () => els.overlay.classList.remove("show"));
+      els.sound.addEventListener("click", () => {
+        state.sound = !state.sound;
+        toast(state.sound ? "音效已接入。" : "音效已断开。");
+      });
+      els.reset.addEventListener("click", restartGame);
+      els.help.addEventListener("click", () => {
+        toast("目标会指数增长。稳玩会断流，贪多会熔毁。");
+      });
+      els.codex.addEventListener("click", () => {
+        toast("当前版本只有 10 张模块，所有东西都围着红区压力转。");
+      });
+
+      window.addEventListener("keydown", (event) => {
+        if (event.code === "Space") {
+          event.preventDefault();
+          if (!state.settling) pullLever();
+        }
+        if (event.key.toLowerCase() === "r") {
+          event.preventDefault();
+          els.refresh.click();
+        }
+        if (event.key === "Escape") {
+          state.selected = null;
+          render();
+        }
+      });
+    }
+
+    function createSlots() {
+      els.slots.innerHTML = "";
+      for (let i = 0; i < slotCount; i += 1) {
+        const wrap = document.createElement("div");
+        wrap.className = "slot-wrap";
+        wrap.innerHTML = `
+          <div class="slot-label">槽位 ${i + 1}</div>
+          <div class="slot empty" data-slot="${i}" aria-label="槽位 ${i + 1}"></div>
+        `;
+        const slot = wrap.querySelector(".slot");
+        slot.addEventListener("dragover", onSlotDragOver);
+        slot.addEventListener("dragleave", onSlotDragLeave);
+        slot.addEventListener("drop", onSlotDrop);
+        slot.addEventListener("click", () => onSlotClick(i));
+        els.slots.appendChild(wrap);
+      }
+    }
+
+    function newRound(first = false) {
+      state.slots = Array(slotCount).fill(null);
+      state.selected = null;
+      drawHand();
+      if (first) {
+        logLine("引擎上线：第 1 轮目标 ¥100。");
+      } else {
+        logLine(`进入第 ${state.round} 轮，目标 ${money(currentTarget())}。`);
+      }
+    }
+
+    function drawHand() {
+      const pool = shuffle([...catalog]);
+      const greedBias = state.round >= 3 ? pool.filter((m) => m.kind !== "stable") : [];
+      state.hand = [];
+      while (state.hand.length < slotCount) {
+        const source = greedBias.length && Math.random() < 0.35 ? greedBias : pool;
+        const picked = source.splice(randInt(0, source.length - 1), 1)[0] || pool.pop();
+        state.hand.push(makeInstance(picked));
+      }
+    }
+
+    function makeInstance(module) {
+      return {
+        uid: `${module.id}-${crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(16).slice(2)}`,
+        ...module
+      };
+    }
+
+    function render() {
+      els.cash.textContent = money(state.cash);
+      els.target.textContent = money(currentTarget());
+      els.round.textContent = `${state.round} / ${targetCurve.length}`;
+      els.best.textContent = String(state.best);
+      els.targetMeta.textContent = state.cash >= currentTarget() ? "达标，继续榨" : "本轮必须达成";
+      renderPressure(state.pressure);
+      renderSlots();
+      renderRack();
+      renderLog();
+      renderPreview();
+      renderEngine();
+
+      const hasModule = state.slots.some(Boolean);
+      els.pull.disabled = state.settling || !hasModule;
+      els.refresh.disabled = state.settling;
+      document.body.classList.toggle("settling", state.settling);
+      document.body.classList.toggle("critical", state.pressure >= 80 && !state.settling);
+    }
+
+    function renderPressure(value) {
+      const clamped = Math.max(0, Math.min(120, value));
+      const angle = 235 + (clamped / 120) * 142;
+      els.needle.style.setProperty("--needle", `${angle}deg`);
+      els.pressure.textContent = String(Math.round(value));
+    }
+
+    function renderSlots(active = -1) {
+      const nodes = [...els.slots.querySelectorAll(".slot")];
+      nodes.forEach((slot, index) => {
+        slot.className = "slot";
+        slot.dataset.slot = String(index);
+        slot.innerHTML = "";
+        if (active === index) slot.classList.add("active");
+        const item = state.slots[index];
+        if (!item) {
+          slot.classList.add("empty");
+        } else {
+          slot.appendChild(createCard(item, "slot"));
+        }
+      });
+    }
+
+    function renderRack() {
+      els.rack.innerHTML = "";
+      const unused = state.hand.filter((card) => !state.slots.some((slot) => slot && slot.uid === card.uid));
+      if (!unused.length) {
+        const empty = document.createElement("div");
+        empty.className = "run-meta";
+        empty.textContent = "5 个模块已全部装入槽位。";
+        els.rack.appendChild(empty);
+        return;
+      }
+
+      unused.forEach((module) => {
+        els.rack.appendChild(createCard(module, "rack"));
+      });
+    }
+
+    function renderLog() {
+      els.log.innerHTML = state.log.map((entry) => `<div class="${entry.type || ""}">${entry.text}</div>`).join("");
+      els.log.scrollTop = els.log.scrollHeight;
+    }
+
+    function renderPreview() {
+      const preview = simulatePreview();
+      els.previewProfit.textContent = money(preview.profit);
+      els.previewPressure.textContent = `${Math.round(preview.pressure)} / ${preview.limit || 100}`;
+      els.previewRisk.textContent = preview.riskText;
+    }
+
+    function renderEngine() {
+      const preview = simulatePreview();
+      const filled = state.slots.filter(Boolean).length;
+      const multiplier = state.slots.some(Boolean) ? preview.multiplier : 1;
+      if (els.multiplierDisplay) els.multiplierDisplay.textContent = `x${multiplier.toFixed(2)}`;
+      if (els.yieldBoost) els.yieldBoost.textContent = `+${Math.max(0, Math.round((multiplier - 1) * 100))}%`;
+      if (els.chainGain) els.chainGain.textContent = preview.sequence ? preview.sequence.name : "未点火";
+      if (els.overloadGain) els.overloadGain.textContent = `+${Math.max(0, (preview.pressure / 34).toFixed(2))}`;
+      if (els.chainText) els.chainText.textContent = `${filled} / ${slotCount}`;
+      if (els.pressureTrend) els.pressureTrend.textContent = formatSigned(Math.round(preview.pressure - state.pressure));
+      document.querySelectorAll(".chain-track i").forEach((segment, index) => {
+        segment.classList.toggle("lit", index < filled);
+      });
+      document.documentElement.style.setProperty("--chain-fill", `${filled / slotCount}`);
+      document.documentElement.style.setProperty("--engine-heat", `${Math.min(1, Math.max(0, preview.pressure / 100))}`);
+    }
+
+    function createCard(module, location) {
+      const card = document.createElement("article");
+      card.className = `card ${location === "rack" ? "in-rack" : ""}`;
+      card.draggable = !state.settling;
+      card.dataset.uid = module.uid;
+      card.style.setProperty("--card-a", module.style[0]);
+      card.style.setProperty("--card-b", module.style[1]);
+      card.style.setProperty("--icon", module.style[2]);
+      card.style.setProperty("--name", module.style[3]);
+      card.style.setProperty("--card-border", module.style[4]);
+      card.style.setProperty("--card-glow", `${module.style[2]}44`);
+      card.style.setProperty("--phase", phaseInfo(module).color);
+      if (state.selected === module.uid) card.classList.add("selected");
+
+      card.innerHTML = `
+        <div class="module-icon">${iconSvg(module.icon)}</div>
+        <div>
+          <div class="phase-badge">${phaseInfo(module).icon} ${phaseInfo(module).name}</div>
+          <h3 class="module-name">${module.name}<span class="tag">${module.tag}</span></h3>
+          <p class="module-desc">${module.desc}</p>
+          <div class="module-meta">${module.meta}</div>
+          <div class="module-trigger">${moduleTriggerText(module)}</div>
+        </div>
+      `;
+
+      card.addEventListener("dragstart", (event) => {
+        if (state.settling) return;
+        event.dataTransfer.setData("text/plain", module.uid);
+        card.classList.add("dragging");
+      });
+      card.addEventListener("dragend", () => card.classList.remove("dragging"));
+      card.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (state.settling) return;
+        state.selected = state.selected === module.uid ? null : module.uid;
+        render();
+      });
+      return card;
+    }
+
+    function phaseInfo(module) {
+      return PHASES[module.phase] || PHASES.kinetic;
+    }
+
+    function moduleTriggerText(module) {
+      const labels = [triggerLabels[module.trigger || EVENTS.ON_RESOLVE]];
+      if (module.guardTrigger) labels.push(triggerLabels[module.guardTrigger]);
+      if (module.thresholdTrigger) labels.push(triggerLabels[module.thresholdTrigger]);
+      return labels.filter(Boolean).join(" / ");
+    }
+
+    function onSlotDragOver(event) {
+      event.preventDefault();
+      event.currentTarget.classList.add("drop-ready");
+    }
+
+    function onSlotDragLeave(event) {
+      event.currentTarget.classList.remove("drop-ready");
+    }
+
+    function onSlotDrop(event) {
+      event.preventDefault();
+      const index = Number(event.currentTarget.dataset.slot);
+      const uid = event.dataTransfer.getData("text/plain");
+      event.currentTarget.classList.remove("drop-ready");
+      placeModule(uid, index);
+    }
+
+    function onSlotClick(index) {
+      if (state.settling) return;
+      if (state.selected) {
+        placeModule(state.selected, index);
+        return;
+      }
+      if (state.slots[index]) {
+        state.selected = state.slots[index].uid;
+        render();
+      }
+    }
+
+    function placeModule(uid, index) {
+      const module = state.hand.find((card) => card.uid === uid);
+      if (!module) return;
+
+      const oldIndex = state.slots.findIndex((card) => card && card.uid === uid);
+      if (oldIndex !== -1) state.slots[oldIndex] = null;
+
+      const displaced = state.slots[index];
+      state.slots[index] = module;
+      if (displaced && oldIndex !== -1) {
+        state.slots[oldIndex] = displaced;
+      }
+      state.selected = null;
+      tick(160, 0.035, "triangle");
+      render();
+    }
+
+    async function pullLever() {
+      if (state.settling) return;
+      if (!state.slots.some(Boolean)) {
+        toast("至少装入一个模块。");
+        return;
+      }
+
+      state.settling = true;
+      els.overlay.classList.remove("show");
+      logLine(`第 ${state.round} 轮拉杆下压。`, "warn");
+      tick(96, 0.05, "sawtooth");
+      render();
+
+      const run = createRunState();
+      const sequence = evaluateIgnitionSequence(state.slots);
+      applyIgnitionSequence(run, sequence);
+      logLine(`点火序列：${sequence.name}，基础 +${sequence.base}，倍率 x${sequence.mult.toFixed(2)}${sequence.limit ? `，红线 +${sequence.limit}` : ""}。`, sequence.limit ? "warn" : "");
+
+      if (state.baseDebt > 0) {
+        logLine(`旧债点火：基础压力 +${state.baseDebt}`, "danger");
+        await animatePressure(state.pressure, run.pressure);
+      }
+
+      for (let index = 0; index < state.slots.length; index += 1) {
+        const module = state.slots[index];
+        if (!module) continue;
+        renderSlots(index);
+        tick(180 + index * 34, 0.06, index % 2 ? "square" : "sawtooth");
+        await wait(470);
+
+        const beforePressure = run.pressure;
+        const beforeProfit = currentRunProfit(run);
+        const message = resolveModule(module, run);
+        const afterProfit = currentRunProfit(run);
+
+        logLine(`槽位 ${index + 1}：${message}`, run.pressure >= 80 ? "danger" : "");
+        if (beforePressure < 80 && run.pressure >= 80) {
+          run.redlineTrips += 1;
+          logLine(`ON_HIGH_PRESSURE：压力越过 80，红区警报接管。`, "danger");
+        }
+        await Promise.all([
+          animatePressure(beforePressure, run.pressure),
+          animatePreviewProfit(beforeProfit, afterProfit)
+        ]);
+        shake(Math.min(14, 2 + run.pressure / 12));
+
+        if (run.pressure > run.explosionLimit) {
+          const saved = await resolveExplosion(run, index);
+          if (!saved) return;
+        }
+      }
+
+      renderSlots();
+      await finishRun(run);
+    }
+
+    async function resolveExplosion(run, index) {
+      if (run.fuses > 0) {
+        run.fuses -= 1;
+        run.pressure = Math.max(0, run.explosionLimit - 6);
+        logLine(`ON_EXPLODE：槽位 ${index + 1} 后触发熔断器，爆炸被压回红线内。`, "danger");
+        tick(54, 0.16, "sawtooth");
+        await animatePressure(112, run.pressure);
+        shake(18);
+        return true;
+      }
+
+      if (run.insurance) {
+        const salvage = Math.floor(currentRunProfit(run) * 0.5);
+        state.cash += salvage;
+        run.insurance = false;
+        run.pressure = Math.max(0, run.explosionLimit - 4);
+        run.base = Math.max(40, Math.floor(run.base * 0.35));
+        run.multiplier = 1;
+        logLine(`ON_EXPLODE：余烬保险保留 ${money(salvage)}，本轮收益烧成余烬。`, "danger");
+        tick(72, 0.15, "triangle");
+        await animatePressure(114, run.pressure);
+        animateCash(state.cash - salvage, state.cash);
+        shake(18);
+        return true;
+      }
+
+      state.pressure = run.pressure;
+      renderPressure(state.pressure);
+      document.body.classList.add("boom");
+      buzz();
+      shake(28);
+      logLine("压力越过 100，引擎熔毁。", "danger");
+      await wait(700);
+      document.body.classList.remove("boom");
+      state.settling = false;
+      render();
+      endGame("引擎熔毁", "你把收益推上去了，也把机器推进了红区。");
+      return false;
+    }
+
+    async function finishRun(run) {
+      const profit = currentRunProfit(run);
+      const oldCash = state.cash;
+      state.cash += profit;
+      state.pressure = Math.max(0, Math.round(run.pressure - 16));
+      state.baseDebt = run.nextDebt;
+
+      tick(440, 0.11, "triangle");
+      logLine(`本轮入账 ${money(profit)}，残余压力 ${state.pressure}。`);
+      await Promise.all([
+        animateCash(oldCash, state.cash),
+        animatePressure(run.pressure, state.pressure)
+      ]);
+
+      const target = currentTarget();
+      if (state.cash < target) {
+        state.settling = false;
+        render();
+        endGame("资金断流", `目标是 ${money(target)}，你停在了 ${money(state.cash)}。`);
+        return;
+      }
+
+      state.best = Math.max(state.best, state.round);
+      localStorage.setItem("abyss-best", String(state.best));
+
+      if (state.round >= targetCurve.length) {
+        state.settling = false;
+        render();
+        endGame("深渊压榨完成", `你带着 ${money(state.cash)} 从机器旁边走开了。`);
+        return;
+      }
+
+      state.round += 1;
+      state.settling = false;
+      newRound();
+      render();
+    }
+
+    function simulatePreview() {
+      if (!state.slots.some(Boolean)) {
+        return { profit: 0, pressure: state.pressure + state.baseDebt, multiplier: 1, sequence: SEQUENCES.single, riskText: "未装入" };
+      }
+      const run = createRunState();
+      const sequence = evaluateIgnitionSequence(state.slots);
+      applyIgnitionSequence(run, sequence);
+      let blown = false;
+      for (const module of state.slots) {
+        if (!module) continue;
+        const beforePressure = run.pressure;
+        resolveModule(module, run, { preview: true });
+        if (beforePressure < 80 && run.pressure >= 80) run.redlineTrips += 1;
+        if (run.pressure > run.explosionLimit) {
+          if (run.fuses > 0) {
+            run.fuses -= 1;
+            run.pressure = Math.max(0, run.explosionLimit - 6);
+          } else if (run.insurance) {
+            run.insurance = false;
+            run.pressure = Math.max(0, run.explosionLimit - 4);
+          } else {
+            blown = true;
+          }
+        }
+      }
+      const risk = Math.max(0, Math.min(100, (run.pressure / run.explosionLimit) * 100 + run.risk - (run.fuses * 18) - (run.insurance ? 10 : 0)));
+      let riskText = "低";
+      if (blown) riskText = "爆炸";
+      else if (risk >= 90) riskText = "濒死";
+      else if (risk >= 70) riskText = "高";
+      else if (risk >= 45) riskText = "中";
+      return { profit: currentRunProfit(run), pressure: run.pressure, multiplier: run.multiplier, limit: run.explosionLimit, sequence, riskText };
+    }
+
+    function createRunState() {
+      return {
+        base: baseProfit(),
+        multiplier: 1,
+        pressure: state.pressure + state.baseDebt,
+        explosionLimit: 100,
+        nextDebt: 0,
+        fuses: 0,
+        insurance: false,
+        risk: 0,
+        redlineTrips: 0
+      };
+    }
+
+    function evaluateIgnitionSequence(slots) {
+      const phases = slots.map((module) => module ? module.phase : null);
+      const placed = phases.filter(Boolean);
+      if (!placed.length) return SEQUENCES.single;
+
+      const groups = [];
+      let index = 0;
+      while (index < phases.length) {
+        if (!phases[index]) {
+          index += 1;
+          continue;
+        }
+        const phase = phases[index];
+        let length = 1;
+        while (phases[index + length] === phase) length += 1;
+        groups.push({ phase, length });
+        index += length;
+      }
+
+      const exactFive = placed.length === slotCount && phases.every(Boolean);
+      if (exactFive && placed.every((phase) => phase === placed[0])) return SEQUENCES.pure;
+
+      const groupLengths = groups.map((group) => group.length).sort((a, b) => a - b).join(",");
+      if (exactFive && groups.length === 2 && groupLengths === "2,3" && groups[0].phase !== groups[1].phase) {
+        return SEQUENCES.asymmetric;
+      }
+
+      for (let start = 0; start <= phases.length - 4; start += 1) {
+        const window = phases.slice(start, start + 4);
+        if (window.every(Boolean) && new Set(window).size === 4) return SEQUENCES.oscillation;
+      }
+
+      if (groups.some((group) => group.length >= 3)) return SEQUENCES.trinity;
+      if (groups.some((group) => group.length >= 2)) return SEQUENCES.pair;
+      return SEQUENCES.single;
+    }
+
+    function applyIgnitionSequence(run, sequence) {
+      run.base += sequence.base;
+      run.multiplier *= sequence.mult;
+      run.explosionLimit += sequence.limit;
+    }
+
+    function resolveModule(module, run, options = {}) {
+      if ((module.trigger || EVENTS.ON_RESOLVE) !== EVENTS.ON_RESOLVE) return "";
+      if (options.preview) {
+        module.preview(run);
+        return "";
+      }
+      return module.apply(run);
+    }
+
+    function currentRunProfit(run) {
+      return Math.max(0, Math.round(run.base * run.multiplier));
+    }
+
+    function baseProfit() {
+      return Math.round(70 * Math.pow(1.72, state.round - 1));
+    }
+
+    function currentTarget() {
+      return targetCurve[state.round - 1];
+    }
+
+    function restartGame() {
+      state.cash = 0;
+      state.pressure = 0;
+      state.round = 1;
+      state.baseDebt = 0;
+      state.settling = false;
+      state.log = [];
+      els.overlay.classList.remove("show");
+      document.body.classList.remove("boom", "critical");
+      newRound(true);
+      render();
+    }
+
+    function endGame(title, body) {
+      els.modalTitle.textContent = title;
+      els.modalBody.textContent = body;
+      els.overlay.classList.add("show");
+      tick(title.includes("完成") ? 520 : 80, 0.18, title.includes("完成") ? "triangle" : "sawtooth");
+    }
+
+    function logLine(text, type = "") {
+      state.log.push({ text, type });
+      state.log = state.log.slice(-24);
+      renderLog();
+    }
+
+    function toast(text) {
+      clearTimeout(toastTimer);
+      els.toast.textContent = text;
+      els.toast.classList.add("show");
+      toastTimer = setTimeout(() => els.toast.classList.remove("show"), 1800);
+    }
+
+    function animateCash(from, to) {
+      return animateNumber(from, to, 620, (value) => {
+        els.cash.textContent = money(value);
+      });
+    }
+
+    function animatePressure(from, to) {
+      return animateNumber(from, to, 540, (value) => {
+        state.pressure = Math.round(value);
+        renderPressure(state.pressure);
+        document.body.classList.toggle("critical", state.pressure >= 80);
+      });
+    }
+
+    function animatePreviewProfit(from, to) {
+      return animateNumber(from, to, 480, (value) => {
+        els.previewProfit.textContent = money(value);
+      });
+    }
+
+    function animateNumber(from, to, duration, renderValue) {
+      const start = performance.now();
+      return new Promise((resolve) => {
+        function frame(now) {
+          const t = Math.min(1, (now - start) / duration);
+          const eased = 1 - Math.pow(1 - t, 3);
+          renderValue(Math.round(from + (to - from) * eased));
+          if (t < 1) {
+            requestAnimationFrame(frame);
+          } else {
+            renderValue(to);
+            renderPreview();
+            resolve();
+          }
+        }
+        requestAnimationFrame(frame);
+      });
+    }
+
+    function shake(strength) {
+      let frames = 8;
+      function step() {
+        const offset = (Math.random() - 0.5) * strength;
+        document.documentElement.style.setProperty("--shake-x", `${offset}px`);
+        frames -= 1;
+        if (frames > 0) {
+          requestAnimationFrame(step);
+        } else {
+          document.documentElement.style.setProperty("--shake-x", "0px");
+        }
+      }
+      step();
+    }
+
+    function tick(frequency = 180, volume = 0.04, type = "square") {
+      if (!state.sound) return;
+      try {
+        audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        oscillator.type = type;
+        oscillator.frequency.value = frequency;
+        gain.gain.value = volume;
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+        oscillator.start();
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.12);
+        oscillator.stop(audioContext.currentTime + 0.13);
+      } catch (error) {
+        state.sound = false;
+      }
+    }
+
+    function buzz() {
+      if (!state.sound) return;
+      [62, 74, 51, 96].forEach((frequency, index) => {
+        setTimeout(() => tick(frequency, 0.14, "sawtooth"), index * 92);
+      });
+    }
+
+    function wait(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    function money(value) {
+      return `¥ ${Math.round(value).toLocaleString("zh-CN")}`;
+    }
+
+    function formatSigned(value) {
+      return value >= 0 ? `+${value}` : `${value}`;
+    }
+
+    function randInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function randFloat(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function shuffle(list) {
+      for (let i = list.length - 1; i > 0; i -= 1) {
+        const j = randInt(0, i);
+        [list[i], list[j]] = [list[j], list[i]];
+      }
+      return list;
+    }
+
+    function iconSvg(name) {
+      const icons = {
+        turbine: `<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="22"></circle><circle cx="32" cy="32" r="8"></circle><path d="M32 10c8 7 9 14 2 22"></path><path d="M54 32c-7 8-14 9-22 2"></path><path d="M32 54c-8-7-9-14-2-22"></path><path d="M10 32c7-8 14-9 22-2"></path></svg>`,
+        canister: `<svg viewBox="0 0 64 64"><path d="M24 10h16l3 8v32l-4 6H25l-4-6V18l3-8Z"></path><path d="M24 18h18"></path><path d="M25 37c7-6 14-6 19 0"></path><path d="M32 27v11"></path><path d="M27 32h10"></path></svg>`,
+        dial: `<svg viewBox="0 0 64 64"><path d="M14 42a22 22 0 1 1 36 0"></path><path d="M32 42l12-18"></path><path d="M18 42h28"></path><circle cx="32" cy="42" r="4"></circle></svg>`,
+        skull: `<svg viewBox="0 0 64 64"><path d="M16 29c0-12 7-20 16-20s16 8 16 20c0 7-4 11-8 14v9H24v-9c-4-3-8-7-8-14Z"></path><circle cx="25" cy="29" r="4"></circle><circle cx="39" cy="29" r="4"></circle><path d="M28 42h8"></path><path d="M27 52v-6"></path><path d="M37 52v-6"></path></svg>`,
+        coin: `<svg viewBox="0 0 64 64"><ellipse cx="32" cy="32" rx="18" ry="23"></ellipse><path d="M38 13c9 3 15 11 15 19s-6 16-15 19"></path><path d="M30 20v24"></path><path d="M24 26c2-4 13-5 16 0 3 6-13 6-10 12 3 5 13 4 15 0"></path></svg>`,
+        bolt: `<svg viewBox="0 0 64 64"><path d="M36 6 16 35h15l-4 23 21-31H33l3-21Z"></path></svg>`,
+        box: `<svg viewBox="0 0 64 64"><path d="M12 20h40v33H12z"></path><path d="M18 14h28l6 6H12l6-6Z"></path><path d="M25 31a7 7 0 1 1 12 5c-4 3-5 5-5 9"></path><path d="M32 51h.01"></path></svg>`,
+        unknown: `<svg viewBox="0 0 64 64"><path d="M32 7 53 20v24L32 57 11 44V20L32 7Z"></path><path d="M25 26a8 8 0 1 1 13 6c-4 3-6 5-6 10"></path><path d="M32 49h.01"></path></svg>`,
+        gauge: `<svg viewBox="0 0 64 64"><path d="M11 45a25 25 0 1 1 42 0"></path><path d="M32 45l17-20"></path><path d="M17 45h30"></path><path d="M45 16l5-5"></path><path d="M20 16l-5-5"></path></svg>`,
+        shield: `<svg viewBox="0 0 64 64"><path d="M32 8 50 15v14c0 13-7 22-18 27-11-5-18-14-18-27V15l18-7Z"></path><path d="M24 33h16"></path><path d="M32 25v16"></path></svg>`
+      };
+      return icons[name] || icons.box;
+    }
+
+    init();
+  </script>
 </body>
 </html>
