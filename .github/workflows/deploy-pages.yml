@@ -27,6 +27,10 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      - name: Inject build SHA
+        run: |
+          perl -0pi -e "s/window.__BUILD_SHA__ \|\| 'dev'/window.__BUILD_SHA__ || '${GITHUB_SHA::7}'/g" web/app.js
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
