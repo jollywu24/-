@@ -29,3 +29,14 @@ python -m http.server 8000
 ```
 
 发布为 GitHub 可访问链接的步骤见：`.github_pages.md`。
+
+
+## 一键自动发布（GitHub Pages）
+
+仓库已包含工作流：`.github/workflows/deploy-pages.yml`。
+
+发布方法：
+1. 把默认分支设为 `main`（或把工作流里的分支名改成你的默认分支）。
+2. 在 GitHub 仓库 Settings → Pages，把 **Source** 设为 **GitHub Actions**。
+3. 合并到 `main` 后，Actions 会自动发布 `web/` 目录。
+4. 链接格式通常是：`https://<你的用户名>.github.io/<仓库名>/`。
