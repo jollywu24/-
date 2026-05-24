@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Joker-like Web MVP</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <h1>Joker-like Web MVP（无美术版）</h1>
+  <div class="panel mono" id="stats"></div>
+  <div class="panel">
+    <h3>手牌（点选 5 张）</h3>
+    <div class="row" id="hand"></div>
+    <button id="playBtn" disabled>结算本回合</button>
+  </div>
+  <div class="panel">
+    <h3>商店（每张 $4）</h3>
+    <div class="row" id="shop"></div>
+  </div>
+  <div class="panel">
+    <h3>日志</h3>
+    <div id="log"></div>
+  </div>
+  <script src="./app.js"></script>
+</body>
+</html>
