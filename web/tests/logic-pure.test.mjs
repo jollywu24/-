@@ -54,3 +54,36 @@ test('simulatePreview exposes base/mult changes for mental math UI', () => {
   assert.ok(out.multiplier >= 1);
   assert.equal(out.profit, Math.round(out.base * out.multiplier));
 });
+
+test('simulatePreview fuse branch prevents immediate blown state', () => {
+  const slots = [
+    { phase: 'pulse', trigger: 'ON_RESOLVE', preview: (run) => { run.fuses += 1; } },
+    { phase: 'thermal', trigger: 'ON_RESOLVE', preview: (run) => { run.pressure = 130; } },
+  ];
+  const out = simulatePreview({
+    slots,
+    state: { pressure: 90, baseDebt: 0 },
+    baseProfit: 100,
+    resolveModuleFn: (m, run, options) => {
+      if (options?.preview) m.preview(run);
+    },
+  });
+  assert.notEqual(out.riskText, '爆炸');
+});
+
+test('simulatePreview keeps deterministic order effects (base then mult)', () => {
+  const slots = [
+    { phase: 'kinetic', trigger: 'ON_RESOLVE', preview: (run) => { run.base += 50; } },
+    { phase: 'thermal', trigger: 'ON_RESOLVE', preview: (run) => { run.multiplier *= 2; } },
+  ];
+  const out = simulatePreview({
+    slots,
+    state: { pressure: 0, baseDebt: 0 },
+    baseProfit: 100,
+    resolveModuleFn: (m, run, options) => {
+      if (options?.preview) m.preview(run);
+    },
+  });
+  assert.equal(out.profit, Math.round(out.base * out.multiplier));
+  assert.equal(out.base, 150 + out.sequence.base);
+});

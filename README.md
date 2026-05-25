@@ -40,3 +40,8 @@ python -m http.server 8000
 2. 在 GitHub 仓库 Settings → Pages，把 **Source** 设为 **GitHub Actions**。
 3. 合并到 `main` 后，Actions 会自动发布 `web/` 目录。
 4. 链接格式通常是：`https://<你的用户名>.github.io/<仓库名>/`。
+
+
+## MVP 资源宪法
+
+已新增 `DESIGN_RULES.md`，定义四资源（Power/Multiplier/Pressure/Credits）、统一结算顺序与复杂度隔离分层。

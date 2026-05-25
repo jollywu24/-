@@ -18,12 +18,22 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
     };
     const { SEQUENCES, evaluateIgnitionSequence, applyIgnitionSequence, createRunState, resolveModule, currentRunProfit, simulatePreview: simulatePreviewCore } = window.GameLogic;
 
+
+    const MODULE_RESOURCE_MAP = {
+      POWER: ["stabilizer"],
+      MULT: ["coil", "loan", "overclock", "redline"],
+      PRESSURE: ["coolant", "fuse", "ember", "blackbox", "unknown"],
+      CREDITS: []
+    };
+
     const catalog = [
       {
         id: "coil",
         name: "高压涡轮",
         tag: "异化",
         kind: "greed",
+        resourceType: "MULT",
+        layer: "L1",
         phase: "kinetic",
         trigger: EVENTS.ON_RESOLVE,
         desc: "压力越高，倍率越凶。",
@@ -46,6 +56,8 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
         name: "冷却液",
         tag: "稳定",
         kind: "stable",
+        resourceType: "PRESSURE",
+        layer: "L1",
         phase: "toxic",
         trigger: EVENTS.ON_RESOLVE,
         desc: "大量降低压力。",
@@ -66,6 +78,8 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
         name: "稳压器",
         tag: "稳定",
         kind: "stable",
+        resourceType: "POWER",
+        layer: "L1",
         phase: "pulse",
         trigger: EVENTS.ON_RESOLVE,
         desc: "先稳住，再榨钱。",
@@ -87,6 +101,8 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
         name: "熔断器",
         tag: "防御",
         kind: "stable",
+        resourceType: "PRESSURE",
+        layer: "L2",
         phase: "pulse",
         trigger: EVENTS.ON_RESOLVE,
         guardTrigger: EVENTS.ON_EXPLODE,
@@ -109,6 +125,8 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
         name: "高利贷",
         tag: "赌狗",
         kind: "greed",
+        resourceType: "MULT",
+        layer: "L1",
         phase: "thermal",
         trigger: EVENTS.ON_RESOLVE,
         desc: "本轮暴涨，下轮更烫。",
@@ -132,6 +150,8 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
         name: "超频器",
         tag: "赌狗",
         kind: "greed",
+        resourceType: "MULT",
+        layer: "L1",
         phase: "thermal",
         trigger: EVENTS.ON_RESOLVE,
         desc: "压力越接近红区，收益越高。",
@@ -154,6 +174,8 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
         name: "黑箱",
         tag: "混沌",
         kind: "chaos",
+        resourceType: "PRESSURE",
+        layer: "L3",
         phase: "toxic",
         trigger: EVENTS.ON_RESOLVE,
         desc: "你看不见里面的齿轮。",
@@ -178,6 +200,8 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
         name: "薛定谔模块",
         tag: "混沌",
         kind: "chaos",
+        resourceType: "PRESSURE",
+        layer: "L3",
         phase: "pulse",
         trigger: EVENTS.ON_RESOLVE,
         desc: "可能是神，也可能是雷。",
@@ -202,6 +226,8 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
         name: "红区增压器",
         tag: "赌狗",
         kind: "greed",
+        resourceType: "MULT",
+        layer: "L1",
         phase: "thermal",
         trigger: EVENTS.ON_RESOLVE,
         thresholdTrigger: EVENTS.ON_HIGH_PRESSURE,
@@ -225,6 +251,8 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
         name: "余烬保险",
         tag: "防御",
         kind: "stable",
+        resourceType: "PRESSURE",
+        layer: "L2",
         phase: "kinetic",
         trigger: EVENTS.ON_RESOLVE,
         guardTrigger: EVENTS.ON_EXPLODE,
@@ -484,6 +512,7 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
     function renderPreview() {
       const preview = simulatePreview();
       els.previewProfit.textContent = money(preview.profit);
+      if (els.profitDisplay) els.profitDisplay.title = `Power(${Math.round(preview.base||0)}) × Mult(${(preview.multiplier||1).toFixed(2)})`;
       els.previewPressure.textContent = `${Math.round(preview.pressure)} / ${preview.limit || 100}`;
       els.previewRisk.textContent = preview.riskText;
     }
@@ -530,7 +559,7 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
           <div class="phase-badge">${phaseInfo(module).icon} ${phaseInfo(module).name}</div>
           <h3 class="module-name">${module.name}<span class="tag">${module.tag}</span></h3>
           <p class="module-desc">${module.desc}</p>
-          <div class="module-meta">${module.meta}</div>
+          <div class="module-meta">[${module.layer}/${module.resourceType}] ${module.meta}</div>
           <div class="module-trigger">${moduleTriggerText(module)}</div>
         </div>
       `;
