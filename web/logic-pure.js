@@ -1,52 +1,56 @@
 (function (global) {
   const SEQUENCES = {
-    single: { name: "单缸点火", base: 30, mult: 1, limit: 0 },
-    pair: { name: "双轨并联", base: 180, mult: 1.25, limit: 0 },
-    trinity: { name: "三位一体", base: 420, mult: 1.8, limit: 0 },
-    oscillation: { name: "交流震荡", base: 520, mult: 3.2, limit: 0 },
-    asymmetric: { name: "非对称负载", base: 850, mult: 2.4, limit: 20 },
-    pure: { name: "纯净回路", base: 1200, mult: 10, limit: 0 }
+    highCard: { name: "高牌", base: 5, mult: 1, limit: 0 },
+    pair: { name: "对子", base: 10, mult: 2, limit: 0 },
+    twoPair: { name: "两对", base: 20, mult: 2, limit: 0 },
+    threeKind: { name: "三条", base: 30, mult: 3, limit: 0 },
+    straight: { name: "顺子", base: 30, mult: 4, limit: 0 },
+    flush: { name: "同花", base: 35, mult: 4, limit: 0 },
+    fullHouse: { name: "葫芦", base: 40, mult: 4, limit: 0 },
+    fourKind: { name: "四条", base: 60, mult: 7, limit: 0 },
+    straightFlush: { name: "同花顺", base: 100, mult: 8, limit: 0 }
   };
 
   function evaluateIgnitionSequence(slots, slotCount = 5) {
-    const phases = slots.map((module) => (module ? module.phase : null));
-    const placed = phases.filter(Boolean);
-    if (!placed.length) return SEQUENCES.single;
+    const cards = slots
+      .map((module, index) => (module ? { phase: module.phase, rank: cardRank(module, index) } : null))
+      .filter(Boolean);
+    if (!cards.length) return SEQUENCES.highCard;
 
-    const groups = [];
-    let index = 0;
-    while (index < phases.length) {
-      if (!phases[index]) {
-        index += 1;
-        continue;
-      }
-      const phase = phases[index];
-      let length = 1;
-      while (phases[index + length] === phase) length += 1;
-      groups.push({ phase, length });
-      index += length;
-    }
+    const exactFive = cards.length === slotCount;
+    const rankCounts = countBy(cards.map((card) => card.rank));
+    const countValues = [...rankCounts.values()].sort((a, b) => b - a);
+    const pairs = countValues.filter((count) => count === 2).length;
+    const flush = exactFive && cards.every((card) => card.phase === cards[0].phase);
+    const straight = exactFive && isStraight(cards.map((card) => card.rank));
 
-    const exactFive = placed.length === slotCount && phases.every(Boolean);
-    if (exactFive && placed.every((phase) => phase === placed[0])) return SEQUENCES.pure;
+    if (straight && flush) return SEQUENCES.straightFlush;
+    if (countValues[0] === 4) return SEQUENCES.fourKind;
+    if (exactFive && countValues[0] === 3 && countValues[1] === 2) return SEQUENCES.fullHouse;
+    if (flush) return SEQUENCES.flush;
+    if (straight) return SEQUENCES.straight;
+    if (countValues[0] === 3) return SEQUENCES.threeKind;
+    if (pairs >= 2) return SEQUENCES.twoPair;
+    if (pairs === 1) return SEQUENCES.pair;
+    return SEQUENCES.highCard;
+  }
 
-    const groupLengths = groups
-      .map((group) => group.length)
-      .sort((a, b) => a - b)
-      .join(",");
+  function cardRank(module, index) {
+    const rank = Number(module.rank ?? module.chips ?? module.points ?? module.value);
+    return Number.isFinite(rank) && rank > 0 ? rank : `slot-${index}`;
+  }
 
-    if (exactFive && groups.length === 2 && groupLengths === "2,3" && groups[0].phase !== groups[1].phase) {
-      return SEQUENCES.asymmetric;
-    }
+  function countBy(values) {
+    const counts = new Map();
+    values.forEach((value) => counts.set(value, (counts.get(value) || 0) + 1));
+    return counts;
+  }
 
-    for (let start = 0; start <= phases.length - 4; start += 1) {
-      const window = phases.slice(start, start + 4);
-      if (window.every(Boolean) && new Set(window).size === 4) return SEQUENCES.oscillation;
-    }
-
-    if (groups.some((group) => group.length >= 3)) return SEQUENCES.trinity;
-    if (groups.some((group) => group.length >= 2)) return SEQUENCES.pair;
-    return SEQUENCES.single;
+  function isStraight(ranks) {
+    if (!ranks.every((rank) => typeof rank === "number")) return false;
+    const unique = [...new Set(ranks)].sort((a, b) => a - b);
+    if (unique.length !== 5) return false;
+    return unique.every((rank, index) => index === 0 || rank - unique[index - 1] === 10);
   }
 
   function applyIgnitionSequence(run, sequence) {
@@ -55,18 +59,88 @@
     run.explosionLimit += sequence.limit;
   }
 
+  function applySimpleJokers(run, jokers = []) {
+    for (const joker of jokers) {
+      const id = typeof joker === "string" ? joker : joker.id;
+      if (id === "chip_plus_30") run.base += 30;
+      if (id === "mult_plus_2") run.multiplier += 2;
+      if (id === "redline_coupon") {
+        run.pressure += 12;
+        run.multiplier += 3;
+      }
+      if (id === "coolant_pass") run.pressure = Math.max(0, run.pressure - 10);
+      if (id === "safe_margin") run.explosionLimit += 10;
+    }
+  }
+
   function createRunState(state, baseProfit) {
     return {
       base: baseProfit,
-      multiplier: 1,
+      multiplier: 1 + (state.redHeatStacks || 0),
       pressure: state.pressure + state.baseDebt,
       explosionLimit: 100,
       nextDebt: 0,
       fuses: 0,
       insurance: false,
       risk: 0,
-      redlineTrips: 0
+      redlineTrips: 0,
+      redHeatStacks: state.redHeatStacks || 0,
+      redlineWasActive: state.pressure + state.baseDebt >= 80,
+      redlineRepeatLast: false,
+      redlineRepeatUsed: false,
+      redlinePowerDoubled: false
     };
+  }
+
+  function applyRedHeatCore(run, options = {}) {
+    const messages = [];
+    const pressureBonus = Math.max(0, run.pressure) * 0.15;
+    if (pressureBonus > 0) {
+      run.multiplier += pressureBonus;
+      messages.push(`热压曲柄：当前压力 ${Math.round(run.pressure)}，倍率 +${pressureBonus.toFixed(2)}`);
+    }
+
+    const inRedline = run.pressure >= 80;
+    if (inRedline && !run.redlineWasActive) {
+      run.redlineTrips += 1;
+      run.redHeatStacks += 1;
+      run.multiplier += 1;
+      run.multiplier *= 2;
+      run.redlineRepeatLast = true;
+      messages.push("红区协议：首次进红区，所有倍率 x2");
+      messages.push(`红温记忆：永久倍率 +1（当前 ${run.redHeatStacks}）`);
+      messages.push("回声过载：本轮最后一张牌将重复触发");
+      if (typeof options.onPermanentStack === "function") options.onPermanentStack(1);
+    }
+
+    if (!inRedline && run.redlineWasActive) {
+      run.redlineWasActive = false;
+    } else if (inRedline) {
+      run.redlineWasActive = true;
+    }
+
+    if (run.pressure > 90 && !run.redlinePowerDoubled) {
+      run.base *= 2;
+      run.redlinePowerDoubled = true;
+      messages.push("熔炉临界：压力超过 90，基础功率 x2");
+    }
+
+    return messages;
+  }
+
+  function handlePressureLimit(run) {
+    if (run.pressure <= run.explosionLimit) return "ok";
+    if (run.fuses > 0) {
+      run.fuses -= 1;
+      run.pressure = Math.max(0, run.explosionLimit - 6);
+      return "fuse";
+    }
+    if (run.insurance) {
+      run.insurance = false;
+      run.pressure = Math.max(0, run.explosionLimit - 4);
+      return "insurance";
+    }
+    return "blown";
   }
 
   function resolveModule(module, run, options = {}) {
@@ -86,9 +160,11 @@
     if (!slots.some(Boolean)) {
       return {
         profit: 0,
+        base: 0,
         pressure: state.pressure + state.baseDebt,
         multiplier: 1,
-        sequence: SEQUENCES.single,
+        limit: 100,
+        sequence: null,
         riskText: "未装入"
       };
     }
@@ -96,24 +172,23 @@
     const run = createRunState(state, baseProfit);
     const sequence = evaluateIgnitionSequence(slots, slotCount);
     applyIgnitionSequence(run, sequence);
+    applySimpleJokers(run, state.ownedJokers || []);
+    applyRedHeatCore(run);
 
     let blown = false;
     for (const module of slots) {
       if (!module) continue;
-      const beforePressure = run.pressure;
       resolveModuleFn(module, run, { preview: true });
-      if (beforePressure < 80 && run.pressure >= 80) run.redlineTrips += 1;
-      if (run.pressure > run.explosionLimit) {
-        if (run.fuses > 0) {
-          run.fuses -= 1;
-          run.pressure = Math.max(0, run.explosionLimit - 6);
-        } else if (run.insurance) {
-          run.insurance = false;
-          run.pressure = Math.max(0, run.explosionLimit - 4);
-        } else {
-          blown = true;
-        }
-      }
+      applyRedHeatCore(run);
+      if (handlePressureLimit(run) === "blown") blown = true;
+    }
+
+    const lastModule = [...slots].reverse().find(Boolean);
+    if (!blown && run.redlineRepeatLast && !run.redlineRepeatUsed && lastModule) {
+      run.redlineRepeatUsed = true;
+      resolveModuleFn(lastModule, run, { preview: true });
+      applyRedHeatCore(run);
+      if (handlePressureLimit(run) === "blown") blown = true;
     }
 
     const risk = Math.max(
@@ -144,6 +219,8 @@
     SEQUENCES,
     evaluateIgnitionSequence,
     applyIgnitionSequence,
+    applySimpleJokers,
+    applyRedHeatCore,
     createRunState,
     resolveModule,
     currentRunProfit,

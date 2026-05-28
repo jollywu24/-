@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" href="data:," />
-  <title>深渊引擎 Demo v0.1</title>
+  <title>红温牌局 Demo v0.1</title>
     <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
@@ -13,8 +13,8 @@
       <aside class="left">
         <div class="brand">
           <div class="version">DEMO v0.1.0</div>
-          <h1 class="title">深渊引擎</h1>
-          <div class="subtitle">ABYSS ENGINE</div>
+          <h1 class="title">红温牌局</h1>
+          <div class="subtitle">REDLINE POKER</div>
         </div>
 
         <div class="stats">
@@ -23,66 +23,44 @@
             <div class="value" id="cash">¥ 0</div>
           </div>
           <div class="panel stat">
-            <div class="label">目标金额</div>
+            <div class="label">当前得分</div>
+            <div class="value" id="score">0</div>
+          </div>
+          <div class="panel stat">
+            <div class="label">盲注目标</div>
             <div class="value small" id="target">¥ 100</div>
-            <div class="run-meta" id="targetMeta">本轮必须达成</div>
+            <div class="run-meta" id="targetMeta">小盲注</div>
           </div>
           <div class="panel stat">
-            <div class="label">当前轮次</div>
-            <div class="value small" id="round">1 / 8</div>
+            <div class="label">当前盲注</div>
+            <div class="value small" id="blindName">小盲注</div>
           </div>
           <div class="panel stat">
-            <div class="label">最高连胜</div>
-            <div class="value small" id="best">0</div>
+            <div class="label">出牌次数</div>
+            <div class="value small" id="handsLeft">4</div>
+          </div>
+          <div class="panel stat">
+            <div class="label">弃牌次数</div>
+            <div class="value small" id="discardsLeft">3</div>
           </div>
         </div>
 
-        <button class="codex-button" id="codexButton" type="button">
-          <span class="mini-icon" aria-hidden="true"></span>
-          <strong>模块图鉴</strong>
-        </button>
-
-        <section class="panel log">
-          <div class="log-title">运行日志</div>
-          <div class="log-list" id="log"></div>
-        </section>
-      </aside>
-
-      <section class="center">
-        <div class="topbar">
+        <section class="left-score-stack">
           <section class="panel multiplier-engine">
-            <div class="engine-title">倍率引擎</div>
-            <div class="dual-core" aria-label="双回路电压中枢">
+            <div class="engine-title">出牌预览</div>
+            <div class="dual-core" aria-label="基础分倍率">
               <div class="dual-node base">
-                <span>⚡ 基础电能 Base</span>
-                <strong id="baseDisplay">0 A</strong>
+                <span>基础分</span>
+                <strong id="baseDisplay">0</strong>
               </div>
               <div class="dual-node mult">
-                <span>🔥 超频伏特 Volts</span>
+                <span>倍率</span>
                 <strong id="voltDisplay">x1.00</strong>
               </div>
-              <div class="dual-node profit">
-                <span>🧾 当前产出</span>
-                <strong id="profitDisplay">¥ 0</strong>
-              </div>
-            </div>
-            <div class="engine-scale left-scale">
-              <span>x1</span>
-              <span>x2</span>
-              <span>x4</span>
-              <span>x8</span>
-              <span>x16</span>
-            </div>
-            <div class="engine-scale right-scale">
-              <span>x32</span>
-              <span>x64</span>
-              <span>x128</span>
-              <span>x256</span>
             </div>
             <div class="multiplier-value" id="multiplierDisplay">x1.00</div>
-            <div class="multiplier-label">当前总倍率</div>
             <div class="chain-panel">
-              <span>连锁增幅</span>
+              <span>已出牌</span>
               <div class="chain-track" aria-hidden="true">
                 <i></i><i></i><i></i><i></i><i></i>
               </div>
@@ -96,14 +74,82 @@
               <strong id="yieldBoost">+0%</strong>
             </div>
             <div class="panel readout">
-              <span>点火序列</span>
-              <strong id="chainGain">+0.00</strong>
+              <span>牌型</span>
+              <strong id="chainGain">未出牌</strong>
             </div>
             <div class="panel readout hot">
-              <span>过载加成</span>
-              <strong id="overloadGain">+0.00</strong>
+              <span>红温记忆</span>
+              <strong id="overloadGain">+0</strong>
             </div>
           </aside>
+
+          <section class="panel pressure-console">
+            <div class="console-title">压力</div>
+            <div class="meter-shell">
+              <div class="meter-arc"></div>
+              <div class="meter-mark left">0</div>
+              <div class="meter-mark mid">50</div>
+              <div class="meter-mark redline">80</div>
+              <div class="meter-mark right">100</div>
+              <div class="needle" id="needle"></div>
+              <div class="meter-center">
+                <div class="pressure-value" id="pressure">0</div>
+                <div class="pressure-label">/ 100</div>
+              </div>
+              <div class="danger-sign">
+                红区
+                <span>80-100 警戒，>100 熔毁</span>
+              </div>
+            </div>
+          </section>
+
+          <div class="panel trend-box">
+            <div class="preview-title">压力趋势</div>
+            <strong id="pressureTrend">+0</strong>
+            <span>预计变化</span>
+          </div>
+        </section>
+
+        <button class="codex-button" id="codexButton" type="button">
+          <span class="mini-icon" aria-hidden="true"></span>
+          <strong>牌组</strong>
+        </button>
+
+        <section class="panel log">
+          <div class="log-title">运行日志</div>
+          <div class="log-list" id="log"></div>
+        </section>
+      </aside>
+
+      <section class="center">
+        <div class="topbar">
+          <section class="joker-strip" aria-label="Joker">
+            <article class="joker-card red">
+              <span>JOKER</span>
+              <strong>热压曲柄</strong>
+              <p>当前压力每 1 点，倍率 +0.15</p>
+            </article>
+            <article class="joker-card violet">
+              <span>JOKER</span>
+              <strong>红区协议</strong>
+              <p>进入红区后，所有倍率翻倍</p>
+            </article>
+            <article class="joker-card cyan">
+              <span>JOKER</span>
+              <strong>熔炉临界</strong>
+              <p>压力超过 90，基础功率 x2</p>
+            </article>
+            <article class="joker-card amber">
+              <span>JOKER</span>
+              <strong>红温记忆</strong>
+              <p>每次进入红区，永久倍率 +1</p>
+            </article>
+            <article class="joker-card green">
+              <span>JOKER</span>
+              <strong>回声过载</strong>
+              <p>进入红区后，最后一张牌重复触发</p>
+            </article>
+          </section>
 
           <nav class="toolbar" aria-label="工具">
             <button class="icon-button" id="soundButton" type="button" title="音效">
@@ -133,46 +179,20 @@
           <div class="slots" id="slots"></div>
         </section>
 
-        <section class="lower-console">
-          <div class="panel trend-box">
-            <div class="preview-title">压力趋势</div>
-            <strong id="pressureTrend">+0</strong>
-            <span>预计变化</span>
-          </div>
-
-          <section class="panel pressure-console">
-            <div class="console-title">压力预览（放置后预估）</div>
-            <div class="meter-shell">
-              <div class="meter-arc"></div>
-              <div class="meter-mark left">0</div>
-              <div class="meter-mark mid">50</div>
-              <div class="meter-mark right">100</div>
-              <div class="needle" id="needle"></div>
-              <div class="meter-center">
-                <div class="pressure-value" id="pressure">0</div>
-                <div class="pressure-label">/ 100</div>
-              </div>
-              <div class="danger-sign">
-                危险区
-                <span>压力 > 100 时引擎将熔毁</span>
-              </div>
-            </div>
-          </section>
-        </section>
-      </section>
-
-      <aside class="right">
         <section class="panel rack">
           <div class="rack-head">
-            <div class="rack-title">可用模块</div>
-            <button class="small-button" id="refreshButton" type="button">换一组 [R]</button>
+            <div class="rack-title">手牌</div>
+            <button class="small-button" id="refreshButton" type="button">弃牌 [R]</button>
           </div>
           <div class="rack-list" id="rack"></div>
         </section>
 
+      </section>
+
+      <aside class="right">
         <section class="panel lever-panel">
-          <button class="pull" id="pullButton" type="button">拉 杆<span>PULL</span></button>
-          <div class="lever-note">按下拉杆，启动引擎</div>
+          <button class="pull" id="pullButton" type="button">出 牌<span>PLAY</span></button>
+          <div class="lever-note">结算当前牌型</div>
         </section>
 
         <section class="panel preview">
@@ -181,7 +201,7 @@
           </div>
           <div class="preview-grid">
             <div class="preview-row">
-              <span>预计收益</span>
+              <span>预计得分</span>
               <strong id="previewProfit">¥ 0</strong>
             </div>
             <div class="preview-row danger">
@@ -194,6 +214,28 @@
             </div>
           </div>
         </section>
+
+        <section class="panel hand-reference" aria-label="牌型说明">
+          <div class="preview-title">牌型说明</div>
+          <div class="hand-table">
+            <div><strong>高牌</strong><span>5 x1</span></div>
+            <div><strong>对子</strong><span>10 x2</span></div>
+            <div><strong>两对</strong><span>20 x2</span></div>
+            <div><strong>三条</strong><span>30 x3</span></div>
+            <div><strong>顺子</strong><span>30 x4</span></div>
+            <div><strong>同花</strong><span>35 x4</span></div>
+            <div><strong>葫芦</strong><span>40 x4</span></div>
+            <div><strong>四条</strong><span>60 x7</span></div>
+            <div><strong>同花顺</strong><span>100 x8</span></div>
+          </div>
+        </section>
+
+        <section class="panel shop-panel" id="shopPanel" aria-label="商店">
+          <div class="preview-title">商店</div>
+          <div class="shop-owned" id="ownedJokers">已拥有：红温核心</div>
+          <div class="shop-list" id="shopList"></div>
+          <button class="small-button shop-next" id="nextBlindButton" type="button">进入下一盲注</button>
+        </section>
       </aside>
     </section>
     <div id="buildVersion" style="position:fixed;right:10px;bottom:8px;font:12px monospace;opacity:.75;z-index:99"></div>
@@ -201,7 +243,7 @@
 
   <div class="overlay" id="overlay" role="dialog" aria-modal="true">
     <div class="modal">
-      <h2 id="modalTitle">引擎熔毁</h2>
+      <h2 id="modalTitle">红温爆表</h2>
       <p id="modalBody">压力越过红线，资金化成了灰。</p>
       <div class="modal-actions">
         <button class="modal-button" id="restartButton" type="button">重新开机</button>
@@ -212,7 +254,7 @@
 
   <div class="toast" id="toast"></div>
 
-    <script src="./logic-pure.js"></script>
-  <script src="./app.js"></script>
+    <script src="./logic-pure.js?v=coreloop-1"></script>
+  <script src="./app.js?v=coreloop-1"></script>
 </body>
 </html>

@@ -45,3 +45,10 @@ python -m http.server 8000
 ## MVP 资源宪法
 
 已新增 `DESIGN_RULES.md`，定义四资源（Power/Multiplier/Pressure/Credits）、统一结算顺序与复杂度隔离分层。
+
+## 最新设计文档
+
+- `DESIGN_NOTES_FROM_SHARE.md`：从分享对话沉淀出的设计要点。
+- `BALATRO_HAND_SYSTEM.md`：Balatro 牌型系统拆解和当前照抄规则。
+- `BALATRO_FULL_DESIGN_BREAKDOWN.md`：完整拆解 Balatro 设计框架，并记录本项目当前核心循环落地。
+- `MVP_PLAN.md`：当前 MVP 优先级、验收标准和暂不做范围。

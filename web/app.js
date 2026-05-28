@@ -1,5 +1,13 @@
-const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
+const anteTargets = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
     const slotCount = 5;
+    const handSize = 8;
+    const maxHands = 4;
+    const maxDiscards = 3;
+    const blinds = [
+      { id: "small", name: "小盲注", mult: 1, reward: 3 },
+      { id: "big", name: "大盲注", mult: 1.5, reward: 4 },
+      { id: "boss", name: "Boss 盲注", mult: 2, reward: 6 }
+    ];
     const EVENTS = {
       ON_RESOLVE: "ON_RESOLVE",
       ON_EXPLODE: "ON_EXPLODE",
@@ -11,273 +19,81 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       ON_HIGH_PRESSURE: "红区触发"
     };
     const PHASES = {
-      kinetic: { name: "动能", icon: "⚙", color: "#f0a349" },
-      pulse: { name: "脉冲", icon: "⚡", color: "#55d8ff" },
-      thermal: { name: "热熔", icon: "▲", color: "#ff6d4a" },
-      toxic: { name: "腐蚀", icon: "☣", color: "#63e47d" }
+      kinetic: { name: "黑桃", icon: "♠", color: "#202026", suitTone: "black" },
+      pulse: { name: "红桃", icon: "♥", color: "#c73536", suitTone: "red" },
+      thermal: { name: "方片", icon: "♦", color: "#d54533", suitTone: "red" },
+      toxic: { name: "梅花", icon: "♣", color: "#202026", suitTone: "black" }
     };
-    const { SEQUENCES, evaluateIgnitionSequence, applyIgnitionSequence, createRunState, resolveModule, currentRunProfit, simulatePreview: simulatePreviewCore } = window.GameLogic;
+    const { SEQUENCES, evaluateIgnitionSequence, applyIgnitionSequence, applySimpleJokers, applyRedHeatCore, createRunState, resolveModule, currentRunProfit, simulatePreview: simulatePreviewCore } = window.GameLogic;
+
+    const shopJokerCatalog = [
+      { id: "chip_plus_30", name: "筹码小丑", price: 4, text: "每次出牌，基础分 +30。" },
+      { id: "mult_plus_2", name: "倍率小丑", price: 5, text: "每次出牌，倍率 +2。" },
+      { id: "redline_coupon", name: "红温赌徒", price: 6, text: "压力 +12，倍率 +3。" },
+      { id: "coolant_pass", name: "冷静面具", price: 4, text: "每次出牌前，压力 -10。" },
+      { id: "safe_margin", name: "保险边框", price: 5, text: "熔毁上限 +10。" }
+    ];
 
 
-    const MODULE_RESOURCE_MAP = {
-      POWER: ["stabilizer"],
-      MULT: ["coil", "loan", "overclock", "redline"],
-      PRESSURE: ["coolant", "fuse", "ember", "blackbox", "unknown"],
-      CREDITS: []
-    };
+    const BASE_CARD_LEVELS = [
+      { chips: 10, pressure: 1 },
+      { chips: 20, pressure: 3 },
+      { chips: 30, pressure: 5 },
+      { chips: 40, pressure: 8 },
+      { chips: 50, pressure: 12 }
+    ];
 
-    const catalog = [
-      {
-        id: "coil",
-        name: "高压涡轮",
-        tag: "异化",
-        kind: "greed",
-        resourceType: "MULT",
-        layer: "L1",
-        phase: "kinetic",
-        trigger: EVENTS.ON_RESOLVE,
-        desc: "压力越高，倍率越凶。",
-        meta: "压力 +20  倍率 x(压力x0.10)",
-        style: ["#412412", "#130f0b", "#f0a349", "#eaa84c", "#9b5523"],
-        icon: "turbine",
-        apply(run) {
-          run.pressure += 20;
-          const factor = Math.max(1.05, run.pressure * 0.1);
-          run.multiplier *= factor;
-          return `涡轮咬合：倍率 x${factor.toFixed(1)}，压力 +20`;
-        },
-        preview(run) {
-          run.pressure += 20;
-          run.multiplier *= Math.max(1.05, run.pressure * 0.1);
-        }
-      },
-      {
-        id: "coolant",
-        name: "冷却液",
-        tag: "稳定",
-        kind: "stable",
-        resourceType: "PRESSURE",
-        layer: "L1",
-        phase: "toxic",
-        trigger: EVENTS.ON_RESOLVE,
-        desc: "大量降低压力。",
-        meta: "压力 -50",
-        style: ["#18351d", "#0d1510", "#63e47d", "#77db7c", "#3e8d50"],
-        icon: "canister",
-        apply(run) {
-          const before = run.pressure;
-          run.pressure = Math.max(0, run.pressure - 50);
-          return `冷却液注入：压力 ${formatSigned(run.pressure - before)}`;
-        },
-        preview(run) {
-          run.pressure = Math.max(0, run.pressure - 50);
-        }
-      },
-      {
-        id: "stabilizer",
-        name: "稳压器",
-        tag: "稳定",
-        kind: "stable",
+    const BASE_CARD_PHASES = [
+      { id: "kinetic", style: ["#f7f2e8", "#e8ddcd", "#202026", "#202026", "#24242a"] },
+      { id: "pulse", style: ["#fff3ee", "#efd6cf", "#c73536", "#c73536", "#c73536"] },
+      { id: "thermal", style: ["#fff4ed", "#ecd7ce", "#d54533", "#d54533", "#d54533"] },
+      { id: "toxic", style: ["#f6f0e6", "#e3d8c6", "#202026", "#202026", "#24242a"] }
+    ];
+
+    const catalog = BASE_CARD_PHASES.flatMap((phase) =>
+      BASE_CARD_LEVELS.map((level) => createBaseCardTemplate(phase, level))
+    );
+
+    function createBaseCardTemplate(phase, level) {
+      const phaseInfo = PHASES[phase.id];
+      return {
+        id: `${phase.id}-${level.chips}`,
+        name: `${level.chips}${phaseInfo.icon}`,
+        kind: "base",
         resourceType: "POWER",
         layer: "L1",
-        phase: "pulse",
+        phase: phase.id,
+        rank: level.chips,
+        chips: level.chips,
+        pressureCost: level.pressure,
         trigger: EVENTS.ON_RESOLVE,
-        desc: "先稳住，再榨钱。",
-        meta: "压力 -28  基础收益 +90",
-        style: ["#182f34", "#0b1316", "#5dd3dc", "#61d1da", "#2f848a"],
-        icon: "dial",
+        style: phase.style,
         apply(run) {
-          run.pressure = Math.max(0, run.pressure - 28);
-          run.base += 90;
-          return "稳压器锁定：压力 -28，基础收益 +90";
+          run.base += level.chips;
+          run.pressure += level.pressure;
+          return `${level.chips}${phaseInfo.icon} ▲${level.pressure}`;
         },
         preview(run) {
-          run.pressure = Math.max(0, run.pressure - 28);
-          run.base += 90;
+          run.base += level.chips;
+          run.pressure += level.pressure;
         }
-      },
-      {
-        id: "fuse",
-        name: "熔断器",
-        tag: "防御",
-        kind: "stable",
-        resourceType: "PRESSURE",
-        layer: "L2",
-        phase: "pulse",
-        trigger: EVENTS.ON_RESOLVE,
-        guardTrigger: EVENTS.ON_EXPLODE,
-        desc: "防爆一次，但会烧毁。",
-        meta: "压力 +8  防爆 x1",
-        style: ["#26323a", "#0d1012", "#56c2ea", "#76d4ea", "#2a7692"],
-        icon: "skull",
-        apply(run) {
-          run.pressure += 8;
-          run.fuses += 1;
-          return "熔断器接入：压力 +8，防爆 x1";
-        },
-        preview(run) {
-          run.pressure += 8;
-          run.fuses += 1;
-        }
-      },
-      {
-        id: "loan",
-        name: "高利贷",
-        tag: "赌狗",
-        kind: "greed",
-        resourceType: "MULT",
-        layer: "L1",
-        phase: "thermal",
-        trigger: EVENTS.ON_RESOLVE,
-        desc: "本轮暴涨，下轮更烫。",
-        meta: "倍率 x5  下轮基础压力 +30",
-        style: ["#3e2510", "#150d08", "#ffb348", "#f2a545", "#ad5a25"],
-        icon: "coin",
-        apply(run) {
-          run.multiplier *= 5;
-          run.nextDebt += 30;
-          run.pressure += 10;
-          return "高利贷到账：倍率 x5，下轮基础压力 +30";
-        },
-        preview(run) {
-          run.multiplier *= 5;
-          run.nextDebt += 30;
-          run.pressure += 10;
-        }
-      },
-      {
-        id: "overclock",
-        name: "超频器",
-        tag: "赌狗",
-        kind: "greed",
-        resourceType: "MULT",
-        layer: "L1",
-        phase: "thermal",
-        trigger: EVENTS.ON_RESOLVE,
-        desc: "压力越接近红区，收益越高。",
-        meta: "压力 +18  倍率 +(压力/22)",
-        style: ["#37221e", "#150d0c", "#ff6d4a", "#f07a4b", "#a54434"],
-        icon: "bolt",
-        apply(run) {
-          run.pressure += 18;
-          const boost = Math.max(1.2, 1 + run.pressure / 22);
-          run.multiplier *= boost;
-          return `超频启动：倍率 x${boost.toFixed(1)}，压力 +18`;
-        },
-        preview(run) {
-          run.pressure += 18;
-          run.multiplier *= Math.max(1.2, 1 + run.pressure / 22);
-        }
-      },
-      {
-        id: "blackbox",
-        name: "黑箱",
-        tag: "混沌",
-        kind: "chaos",
-        resourceType: "PRESSURE",
-        layer: "L3",
-        phase: "toxic",
-        trigger: EVENTS.ON_RESOLVE,
-        desc: "你看不见里面的齿轮。",
-        meta: "压力 +0~60  倍率 x0.8~3.8",
-        style: ["#2b2534", "#100f13", "#b36cf0", "#ba73f6", "#6e4491"],
-        icon: "box",
-        apply(run) {
-          const pressure = randInt(0, 60);
-          const factor = randFloat(0.8, 3.8);
-          run.pressure += pressure;
-          run.multiplier *= factor;
-          return `黑箱展开：倍率 x${factor.toFixed(1)}，压力 +${pressure}`;
-        },
-        preview(run) {
-          run.pressure += 30;
-          run.multiplier *= 2.2;
-          run.risk += 18;
-        }
-      },
-      {
-        id: "unknown",
-        name: "薛定谔模块",
-        tag: "混沌",
-        kind: "chaos",
-        resourceType: "PRESSURE",
-        layer: "L3",
-        phase: "pulse",
-        trigger: EVENTS.ON_RESOLVE,
-        desc: "可能是神，也可能是雷。",
-        meta: "压力 -20~+80  倍率 x0.4~6",
-        style: ["#352042", "#130d19", "#c463ff", "#c16df7", "#7e419f"],
-        icon: "unknown",
-        apply(run) {
-          const pressure = randInt(-20, 80);
-          const factor = randFloat(0.4, 6);
-          run.pressure = Math.max(0, run.pressure + pressure);
-          run.multiplier *= factor;
-          return `薛定谔坍缩：倍率 x${factor.toFixed(1)}，压力 ${formatSigned(pressure)}`;
-        },
-        preview(run) {
-          run.pressure += 30;
-          run.multiplier *= 3.2;
-          run.risk += 30;
-        }
-      },
-      {
-        id: "redline",
-        name: "红区增压器",
-        tag: "赌狗",
-        kind: "greed",
-        resourceType: "MULT",
-        layer: "L1",
-        phase: "thermal",
-        trigger: EVENTS.ON_RESOLVE,
-        thresholdTrigger: EVENTS.ON_HIGH_PRESSURE,
-        desc: "站在红线里才够甜。",
-        meta: "压力 +35  红区倍率 x4",
-        style: ["#421714", "#150a08", "#ff563f", "#ff6a4b", "#a8362b"],
-        icon: "gauge",
-        apply(run) {
-          run.pressure += 35;
-          const factor = run.pressure >= 70 ? 4 : 1.35;
-          run.multiplier *= factor;
-          return `红区增压：倍率 x${factor.toFixed(1)}，压力 +35`;
-        },
-        preview(run) {
-          run.pressure += 35;
-          run.multiplier *= run.pressure >= 70 ? 4 : 1.35;
-        }
-      },
-      {
-        id: "ember",
-        name: "余烬保险",
-        tag: "防御",
-        kind: "stable",
-        resourceType: "PRESSURE",
-        layer: "L2",
-        phase: "kinetic",
-        trigger: EVENTS.ON_RESOLVE,
-        guardTrigger: EVENTS.ON_EXPLODE,
-        desc: "爆了也能捞回一点。",
-        meta: "压力 +12  熔毁保留 50%",
-        style: ["#1b3340", "#0b1215", "#55d8ff", "#5ad0ec", "#2f8198"],
-        icon: "shield",
-        apply(run) {
-          run.pressure += 12;
-          run.insurance = true;
-          return "余烬保险生效：压力 +12，熔毁保留 50%";
-        },
-        preview(run) {
-          run.pressure += 12;
-          run.insurance = true;
-        }
-      }
-    ];
+      };
+    }
 
     const state = {
       cash: 0,
+      score: 0,
       pressure: 0,
-      round: 1,
+      ante: 1,
+      blindIndex: 0,
+      hands: maxHands,
+      discards: maxDiscards,
+      phase: "blind",
       best: Number(localStorage.getItem("abyss-best") || 0),
       baseDebt: 0,
+      redHeatStacks: 0,
+      ownedJokers: [],
+      shop: [],
       hand: [],
       slots: Array(slotCount).fill(null),
       selected: null,
@@ -288,10 +104,12 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
 
     const els = {
       cash: document.getElementById("cash"),
+      score: document.getElementById("score"),
       target: document.getElementById("target"),
       targetMeta: document.getElementById("targetMeta"),
-      round: document.getElementById("round"),
-      best: document.getElementById("best"),
+      blindName: document.getElementById("blindName"),
+      handsLeft: document.getElementById("handsLeft"),
+      discardsLeft: document.getElementById("discardsLeft"),
       pressure: document.getElementById("pressure"),
       needle: document.getElementById("needle"),
       slots: document.getElementById("slots"),
@@ -305,7 +123,6 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       multiplierDisplay: document.getElementById("multiplierDisplay"),
       baseDisplay: document.getElementById("baseDisplay"),
       voltDisplay: document.getElementById("voltDisplay"),
-      profitDisplay: document.getElementById("profitDisplay"),
       yieldBoost: document.getElementById("yieldBoost"),
       chainGain: document.getElementById("chainGain"),
       overloadGain: document.getElementById("overloadGain"),
@@ -320,7 +137,11 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       sound: document.getElementById("soundButton"),
       reset: document.getElementById("settingsButton"),
       help: document.getElementById("helpButton"),
-      codex: document.getElementById("codexButton")
+      codex: document.getElementById("codexButton"),
+      shopPanel: document.getElementById("shopPanel"),
+      shopList: document.getElementById("shopList"),
+      ownedJokers: document.getElementById("ownedJokers"),
+      nextBlind: document.getElementById("nextBlindButton")
     };
 
     let audioContext;
@@ -360,14 +181,8 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
 
     function bindEvents() {
       els.pull.addEventListener("click", pullLever);
-      els.refresh.addEventListener("click", () => {
-        if (state.settling) return;
-        drawHand();
-        state.slots = Array(slotCount).fill(null);
-        state.selected = null;
-        logLine("换了一组模块。", "warn");
-        render();
-      });
+      els.refresh.addEventListener("click", discardCards);
+      els.nextBlind.addEventListener("click", nextBlind);
       els.restart.addEventListener("click", restartGame);
       els.continue.addEventListener("click", () => els.overlay.classList.remove("show"));
       els.sound.addEventListener("click", () => {
@@ -379,7 +194,7 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
         toast("目标会指数增长。稳玩会断流，贪多会熔毁。");
       });
       els.codex.addEventListener("click", () => {
-        toast("当前版本只有 10 张模块，所有东西都围着红区压力转。");
+        toast("基础牌只看点数、花色和压力；红温由 Joker 改写。");
       });
 
       window.addEventListener("keydown", (event) => {
@@ -404,8 +219,8 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
         const wrap = document.createElement("div");
         wrap.className = "slot-wrap";
         wrap.innerHTML = `
-          <div class="slot-label">槽位 ${i + 1}</div>
-          <div class="slot empty" data-slot="${i}" aria-label="槽位 ${i + 1}"></div>
+          <div class="slot-label">出牌 ${i + 1}</div>
+          <div class="slot empty" data-slot="${i}" aria-label="出牌位置 ${i + 1}"></div>
         `;
         const slot = wrap.querySelector(".slot");
         slot.addEventListener("dragover", onSlotDragOver);
@@ -419,23 +234,28 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
     function newRound(first = false) {
       state.slots = Array(slotCount).fill(null);
       state.selected = null;
+      state.score = 0;
+      state.hands = maxHands;
+      state.discards = maxDiscards;
+      state.phase = "blind";
       drawHand();
       if (first) {
-        logLine("引擎上线：第 1 轮目标 ¥100。");
+        logLine(`牌局开始：Ante ${state.ante} ${currentBlind().name}，目标 ${scoreText(currentTarget())}。`);
       } else {
-        logLine(`进入第 ${state.round} 轮，目标 ${money(currentTarget())}。`);
+        logLine(`进入 Ante ${state.ante} ${currentBlind().name}，目标 ${scoreText(currentTarget())}。`);
       }
     }
 
     function drawHand() {
       const pool = shuffle([...catalog]);
-      const greedBias = state.round >= 3 ? pool.filter((m) => m.kind !== "stable") : [];
       state.hand = [];
-      while (state.hand.length < slotCount) {
-        const source = greedBias.length && Math.random() < 0.35 ? greedBias : pool;
-        const picked = source.splice(randInt(0, source.length - 1), 1)[0] || pool.pop();
-        state.hand.push(makeInstance(picked));
-      }
+      while (state.hand.length < handSize && pool.length) state.hand.push(makeInstance(pool.pop()));
+    }
+
+    function refillHand() {
+      const usedIds = new Set(state.hand.map((card) => card.id));
+      const pool = shuffle(catalog.filter((card) => !usedIds.has(card.id)));
+      while (state.hand.length < handSize && pool.length) state.hand.push(makeInstance(pool.pop()));
     }
 
     function makeInstance(module) {
@@ -447,27 +267,32 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
 
     function render() {
       els.cash.textContent = money(state.cash);
-      els.target.textContent = money(currentTarget());
-      els.round.textContent = `${state.round} / ${targetCurve.length}`;
-      els.best.textContent = String(state.best);
-      els.targetMeta.textContent = state.cash >= currentTarget() ? "达标，继续榨" : "本轮必须达成";
+      els.score.textContent = scoreText(state.score);
+      els.target.textContent = scoreText(currentTarget());
+      els.blindName.textContent = currentBlind().name;
+      els.handsLeft.textContent = `${state.hands} / ${maxHands}`;
+      els.discardsLeft.textContent = `${state.discards} / ${maxDiscards}`;
+      els.targetMeta.textContent = `Ante ${state.ante} · 奖励 ${money(clearReward())}`;
       renderPressure(state.pressure);
       renderSlots();
       renderRack();
       renderLog();
       renderPreview();
       renderEngine();
+      renderShop();
 
       const hasModule = state.slots.some(Boolean);
-      els.pull.disabled = state.settling || !hasModule;
-      els.refresh.disabled = state.settling;
+      const inBlind = state.phase === "blind";
+      els.pull.disabled = state.settling || !hasModule || !inBlind;
+      els.refresh.disabled = state.settling || !inBlind || state.discards <= 0;
       document.body.classList.toggle("settling", state.settling);
       document.body.classList.toggle("critical", state.pressure >= 80 && !state.settling);
+      document.body.classList.toggle("shop-open", state.phase === "shop");
     }
 
     function renderPressure(value) {
-      const clamped = Math.max(0, Math.min(120, value));
-      const angle = 235 + (clamped / 120) * 142;
+      const clamped = Math.max(0, Math.min(100, value));
+      const angle = 220 + (clamped / 100) * 140;
       els.needle.style.setProperty("--needle", `${angle}deg`);
       els.pressure.textContent = String(Math.round(value));
     }
@@ -494,7 +319,7 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       if (!unused.length) {
         const empty = document.createElement("div");
         empty.className = "run-meta";
-        empty.textContent = "5 个模块已全部装入槽位。";
+        empty.textContent = "5 张牌已全部放入出牌区。";
         els.rack.appendChild(empty);
         return;
       }
@@ -511,8 +336,7 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
 
     function renderPreview() {
       const preview = simulatePreview();
-      els.previewProfit.textContent = money(preview.profit);
-      if (els.profitDisplay) els.profitDisplay.title = `Power(${Math.round(preview.base||0)}) × Mult(${(preview.multiplier||1).toFixed(2)})`;
+      els.previewProfit.textContent = scoreText(preview.profit);
       els.previewPressure.textContent = `${Math.round(preview.pressure)} / ${preview.limit || 100}`;
       els.previewRisk.textContent = preview.riskText;
     }
@@ -520,16 +344,15 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
     function renderEngine() {
       const preview = simulatePreview();
       const filled = state.slots.filter(Boolean).length;
-      const multiplier = state.slots.some(Boolean) ? preview.multiplier : 1;
-      const base = state.slots.some(Boolean) ? preview.base : baseProfit();
-      const profit = state.slots.some(Boolean) ? preview.profit : 0;
+      const hasCards = filled > 0;
+      const multiplier = hasCards ? preview.multiplier : 1;
+      const base = hasCards ? preview.base : 0;
       if (els.multiplierDisplay) els.multiplierDisplay.textContent = `x${multiplier.toFixed(2)}`;
       if (els.baseDisplay) els.baseDisplay.textContent = `${Math.round(base)} A`;
       if (els.voltDisplay) els.voltDisplay.textContent = `x${multiplier.toFixed(2)}`;
-      if (els.profitDisplay) els.profitDisplay.textContent = money(profit);
       if (els.yieldBoost) els.yieldBoost.textContent = `+${Math.max(0, Math.round((multiplier - 1) * 100))}%`;
-      if (els.chainGain) els.chainGain.textContent = preview.sequence ? preview.sequence.name : "未点火";
-      if (els.overloadGain) els.overloadGain.textContent = `+${Math.max(0, (preview.pressure / 34).toFixed(2))}`;
+      if (els.chainGain) els.chainGain.textContent = hasCards && preview.sequence ? preview.sequence.name : "未出牌";
+      if (els.overloadGain) els.overloadGain.textContent = `+${state.redHeatStacks}`;
       if (els.chainText) els.chainText.textContent = `${filled} / ${slotCount}`;
       if (els.pressureTrend) els.pressureTrend.textContent = formatSigned(Math.round(preview.pressure - state.pressure));
       document.querySelectorAll(".chain-track i").forEach((segment, index) => {
@@ -540,8 +363,9 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
     }
 
     function createCard(module, location) {
+      const face = cardFace(module);
       const card = document.createElement("article");
-      card.className = `card ${location === "rack" ? "in-rack" : ""}`;
+      card.className = `card base-card ${location === "rack" ? "in-rack" : ""}`;
       card.draggable = !state.settling;
       card.dataset.uid = module.uid;
       card.style.setProperty("--card-a", module.style[0]);
@@ -551,28 +375,35 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       card.style.setProperty("--card-border", module.style[4]);
       card.style.setProperty("--card-glow", `${module.style[2]}44`);
       card.style.setProperty("--phase", phaseInfo(module).color);
+      card.style.setProperty("--suit-color", phaseInfo(module).color);
+      card.classList.add(phaseInfo(module).suitTone === "red" ? "red-suit" : "black-suit");
       if (state.selected === module.uid) card.classList.add("selected");
 
       card.innerHTML = `
-        <div class="module-icon">${iconSvg(module.icon)}</div>
-        <div>
-          <div class="phase-badge">${phaseInfo(module).icon} ${phaseInfo(module).name}</div>
-          <h3 class="module-name">${module.name}<span class="tag">${module.tag}</span></h3>
-          <p class="module-desc">${module.desc}</p>
-          <div class="module-meta">[${module.layer}/${module.resourceType}] ${module.meta}</div>
-          <div class="module-trigger">${moduleTriggerText(module)}</div>
+        <div class="card-corner top">
+          <strong>${face.points}</strong>
+          <span>${face.suit}</span>
         </div>
+        <div class="card-center">
+          <div class="card-suit">${face.suit}</div>
+          <div class="card-points">${face.points}</div>
+        </div>
+        <div class="card-corner bottom">
+          <strong>${face.points}</strong>
+          <span>${face.suit}</span>
+        </div>
+        <div class="card-pressure ${face.pressureKind}">${face.pressure}</div>
       `;
 
       card.addEventListener("dragstart", (event) => {
-        if (state.settling) return;
+        if (state.settling || state.phase !== "blind") return;
         event.dataTransfer.setData("text/plain", module.uid);
         card.classList.add("dragging");
       });
       card.addEventListener("dragend", () => card.classList.remove("dragging"));
       card.addEventListener("click", (event) => {
         event.stopPropagation();
-        if (state.settling) return;
+        if (state.settling || state.phase !== "blind") return;
         if (location === "slot") {
           unplaceModule(module.uid);
           return;
@@ -591,17 +422,26 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       if (location === "rack") {
         card.addEventListener("dblclick", (event) => {
           event.stopPropagation();
-          if (state.settling) return;
+          if (state.settling || state.phase !== "blind") return;
           clearTimeout(rackClickTimer);
           const firstEmpty = state.slots.findIndex((slot) => !slot);
           if (firstEmpty === -1) {
-            toast("卡槽已满，可单击已装模块卸载。");
+            toast("出牌区已满，可单击已放置的牌收回。");
             return;
           }
           placeModule(module.uid, firstEmpty);
         });
       }
       return card;
+    }
+
+    function cardFace(module) {
+      return {
+        suit: phaseInfo(module).icon,
+        points: module.chips || 0,
+        pressure: `▲${module.pressureCost || 0}`,
+        pressureKind: module.pressureCost >= 8 ? "hot" : "cool"
+      };
     }
 
     function phaseInfo(module) {
@@ -633,7 +473,7 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
     }
 
     function onSlotClick(index) {
-      if (state.settling) return;
+      if (state.settling || state.phase !== "blind") return;
       if (state.selected) {
         placeModule(state.selected, index);
         return;
@@ -645,6 +485,7 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
     }
 
     function placeModule(uid, index) {
+      if (state.phase !== "blind") return;
       const module = state.hand.find((card) => card.uid === uid);
       if (!module) return;
 
@@ -670,23 +511,50 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       render();
     }
 
+    function discardCards() {
+      if (state.settling || state.phase !== "blind") return;
+      if (state.discards <= 0) {
+        toast("没有弃牌次数了。");
+        return;
+      }
+
+      const selected = state.slots.filter(Boolean);
+      if (selected.length) {
+        const discarded = new Set(selected.map((card) => card.uid));
+        state.hand = state.hand.filter((card) => !discarded.has(card.uid));
+        state.slots = Array(slotCount).fill(null);
+        logLine(`弃掉 ${selected.length} 张牌。`, "warn");
+      } else {
+        state.hand = [];
+        logLine("弃掉整手牌。", "warn");
+      }
+      state.discards -= 1;
+      state.selected = null;
+      refillHand();
+      tick(180, 0.04, "triangle");
+      render();
+    }
+
     async function pullLever() {
       if (state.settling) return;
       if (!state.slots.some(Boolean)) {
-        toast("至少装入一个模块。");
+        toast("至少打出一张牌。");
         return;
       }
 
       state.settling = true;
       els.overlay.classList.remove("show");
-      logLine(`第 ${state.round} 轮拉杆下压。`, "warn");
+      state.hands -= 1;
+      logLine(`Ante ${state.ante} ${currentBlind().name} 出牌。`, "warn");
       tick(96, 0.05, "sawtooth");
       render();
 
       const run = createRunState(state, baseProfit());
       const sequence = evaluateIgnitionSequence(state.slots);
       applyIgnitionSequence(run, sequence);
-      logLine(`点火序列：${sequence.name}，基础 +${sequence.base}，倍率 x${sequence.mult.toFixed(2)}${sequence.limit ? `，红线 +${sequence.limit}` : ""}。`, sequence.limit ? "warn" : "");
+      applySimpleJokers(run, state.ownedJokers);
+      logLine(`牌型：${sequence.name}，倍率 x${sequence.mult.toFixed(2)}${sequence.limit ? `，红线 +${sequence.limit}` : ""}。`, sequence.limit ? "warn" : "");
+      logRedHeat(applyRedHeatCore(run, { onPermanentStack: addRedHeatStack }));
 
       if (state.baseDebt > 0) {
         logLine(`旧债点火：基础压力 +${state.baseDebt}`, "danger");
@@ -696,46 +564,72 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       for (let index = 0; index < state.slots.length; index += 1) {
         const module = state.slots[index];
         if (!module) continue;
-        renderSlots(index);
-        tick(180 + index * 34, 0.06, index % 2 ? "square" : "sawtooth");
-        await wait(470);
+        const saved = await resolveSlot(index, module, run);
+        if (!saved) return;
+      }
 
-        const beforePressure = run.pressure;
-        const beforeProfit = currentRunProfit(run);
-        const beforeBase = run.base;
-        const beforeMult = run.multiplier;
-        const message = resolveModule(module, run);
-        const afterProfit = currentRunProfit(run);
-        const afterBase = run.base;
-        const afterMult = run.multiplier;
-
-        logLine(`槽位 ${index + 1}：${message}`, run.pressure >= 80 ? "danger" : "");
-        if (beforePressure < 80 && run.pressure >= 80) {
-          run.redlineTrips += 1;
-          logLine(`ON_HIGH_PRESSURE：压力越过 80，红区警报接管。`, "danger");
-        }
-        await Promise.all([
-          animatePressure(beforePressure, run.pressure),
-          animatePreviewProfit(beforeProfit, afterProfit),
-          animateDualCore(beforeBase, afterBase, beforeMult, afterMult, beforeProfit, afterProfit)
-        ]);
-        shake(Math.min(14, 2 + run.pressure / 12));
-
-        if (run.pressure > run.explosionLimit) {
-          const saved = await resolveExplosion(run, index);
-          if (!saved) return;
-        }
+      const lastIndex = lastFilledSlotIndex();
+      if (run.redlineRepeatLast && !run.redlineRepeatUsed && lastIndex !== -1) {
+        run.redlineRepeatUsed = true;
+        logLine(`回声过载：最后一张牌重复触发。`, "danger");
+        const saved = await resolveSlot(lastIndex, state.slots[lastIndex], run, true);
+        if (!saved) return;
       }
 
       renderSlots();
       await finishRun(run);
     }
 
+    async function resolveSlot(index, module, run, repeated = false) {
+      renderSlots(index);
+      tick(repeated ? 82 : 180 + index * 34, repeated ? 0.12 : 0.06, repeated ? "sawtooth" : index % 2 ? "square" : "sawtooth");
+      await wait(repeated ? 360 : 470);
+
+      const beforePressure = run.pressure;
+      const beforeProfit = currentRunProfit(run);
+      const beforeBase = run.base;
+      const beforeMult = run.multiplier;
+      const message = resolveModule(module, run);
+      const redHeatMessages = applyRedHeatCore(run, { onPermanentStack: addRedHeatStack });
+      const afterProfit = currentRunProfit(run);
+      const afterBase = run.base;
+      const afterMult = run.multiplier;
+
+      logLine(`${repeated ? "回声牌" : `第 ${index + 1} 张`}：${message}`, run.pressure >= 80 ? "danger" : "");
+      logRedHeat(redHeatMessages);
+      await Promise.all([
+        animatePressure(beforePressure, run.pressure),
+        animatePreviewProfit(beforeProfit, afterProfit),
+        animateDualCore(beforeBase, afterBase, beforeMult, afterMult)
+      ]);
+      shake(Math.min(24, 2 + run.pressure / 7 + (repeated ? 8 : 0)));
+
+      if (run.pressure > run.explosionLimit) {
+        return resolveExplosion(run, index);
+      }
+      return true;
+    }
+
+    function logRedHeat(messages) {
+      messages.forEach((message) => logLine(message, message.includes("红区") || message.includes("临界") || message.includes("回声") ? "danger" : "warn"));
+    }
+
+    function addRedHeatStack(amount) {
+      state.redHeatStacks += amount;
+    }
+
+    function lastFilledSlotIndex() {
+      for (let index = state.slots.length - 1; index >= 0; index -= 1) {
+        if (state.slots[index]) return index;
+      }
+      return -1;
+    }
+
     async function resolveExplosion(run, index) {
       if (run.fuses > 0) {
         run.fuses -= 1;
         run.pressure = Math.max(0, run.explosionLimit - 6);
-        logLine(`ON_EXPLODE：槽位 ${index + 1} 后触发熔断器，爆炸被压回红线内。`, "danger");
+        logLine(`ON_EXPLODE：第 ${index + 1} 张后触发熔断器，爆炸被压回红线内。`, "danger");
         tick(54, 0.16, "sawtooth");
         await animatePressure(112, run.pressure);
         shake(18);
@@ -762,51 +656,68 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       document.body.classList.add("boom");
       buzz();
       shake(28);
-      logLine("压力越过 100，引擎熔毁。", "danger");
+      logLine("压力越过 100，红温爆表。", "danger");
       await wait(700);
       document.body.classList.remove("boom");
       state.settling = false;
       render();
-      endGame("引擎熔毁", "你把收益推上去了，也把机器推进了红区。");
+      endGame("红温爆表", "你把收益推上去了，也把压力推过了熔毁线。");
       return false;
     }
 
     async function finishRun(run) {
       const profit = currentRunProfit(run);
-      const oldCash = state.cash;
-      state.cash += profit;
+      const oldScore = state.score;
+      state.score += profit;
       state.pressure = Math.max(0, Math.round(run.pressure - 16));
       state.baseDebt = run.nextDebt;
 
       tick(440, 0.11, "triangle");
-      logLine(`本轮入账 ${money(profit)}，残余压力 ${state.pressure}。`);
+      logLine(`本手得分 ${scoreText(profit)}，盲注累计 ${scoreText(state.score)}，残余压力 ${state.pressure}。`);
       await Promise.all([
-        animateCash(oldCash, state.cash),
+        animateScore(oldScore, state.score),
         animatePressure(run.pressure, state.pressure)
       ]);
 
       const target = currentTarget();
-      if (state.cash < target) {
+      if (state.score < target && state.hands <= 0) {
         state.settling = false;
         render();
-        endGame("资金断流", `目标是 ${money(target)}，你停在了 ${money(state.cash)}。`);
+        endGame("盲注失败", `目标是 ${scoreText(target)}，你停在了 ${scoreText(state.score)}。`);
         return;
       }
 
-      state.best = Math.max(state.best, state.round);
+      if (state.score < target) {
+        removePlayedCards();
+        refillHand();
+        state.settling = false;
+        render();
+        return;
+      }
+
+      const reward = clearReward();
+      state.cash += reward;
+      state.best = Math.max(state.best, state.ante);
       localStorage.setItem("abyss-best", String(state.best));
+      logLine(`盲注通过：获得 ${money(reward)}，进入商店。`);
 
-      if (state.round >= targetCurve.length) {
+      if (state.ante >= anteTargets.length && state.blindIndex >= blinds.length - 1) {
         state.settling = false;
         render();
-        endGame("深渊压榨完成", `你带着 ${money(state.cash)} 从机器旁边走开了。`);
+        endGame("牌局完成", `你带着 ${money(state.cash)} 和红温核心离桌。`);
         return;
       }
 
-      state.round += 1;
+      enterShop();
       state.settling = false;
-      newRound();
       render();
+    }
+
+    function removePlayedCards() {
+      const played = new Set(state.slots.filter(Boolean).map((card) => card.uid));
+      state.hand = state.hand.filter((card) => !played.has(card.uid));
+      state.slots = Array(slotCount).fill(null);
+      state.selected = null;
     }
 
     function simulatePreview() {
@@ -820,18 +731,96 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
     }
 
     function baseProfit() {
-      return Math.round(70 * Math.pow(1.72, state.round - 1));
+      return 0;
+    }
+
+    function currentBlind() {
+      return blinds[state.blindIndex] || blinds[0];
     }
 
     function currentTarget() {
-      return targetCurve[state.round - 1];
+      return Math.round((anteTargets[state.ante - 1] || anteTargets.at(-1)) * currentBlind().mult);
+    }
+
+    function clearReward() {
+      return currentBlind().reward + Math.max(0, state.hands);
+    }
+
+    function enterShop() {
+      state.phase = "shop";
+      state.slots = Array(slotCount).fill(null);
+      state.selected = null;
+      state.shop = shuffle([...shopJokerCatalog])
+        .filter((offer) => !state.ownedJokers.includes(offer.id))
+        .slice(0, 3);
+    }
+
+    function nextBlind() {
+      if (state.phase !== "shop") return;
+      state.blindIndex += 1;
+      if (state.blindIndex >= blinds.length) {
+        state.blindIndex = 0;
+        state.ante += 1;
+      }
+      newRound();
+      render();
+    }
+
+    function buyJoker(id) {
+      if (state.phase !== "shop") return;
+      const offer = shopJokerCatalog.find((joker) => joker.id === id);
+      if (!offer) return;
+      if (state.ownedJokers.includes(id)) {
+        toast("已经拥有这张 Joker。");
+        return;
+      }
+      if (state.cash < offer.price) {
+        toast("资金不够。");
+        return;
+      }
+      state.cash -= offer.price;
+      state.ownedJokers.push(id);
+      state.shop = state.shop.filter((joker) => joker.id !== id);
+      logLine(`购买 Joker：${offer.name}。`);
+      render();
+    }
+
+    function renderShop() {
+      if (!els.shopPanel) return;
+      const open = state.phase === "shop";
+      els.shopPanel.classList.toggle("show", open);
+      els.shopPanel.hidden = !open;
+      if (!open) return;
+
+      const ownedNames = state.ownedJokers
+        .map((id) => shopJokerCatalog.find((joker) => joker.id === id)?.name)
+        .filter(Boolean);
+      els.ownedJokers.textContent = `已拥有：红温核心${ownedNames.length ? ` / ${ownedNames.join(" / ")}` : ""}`;
+      els.shopList.innerHTML = state.shop.map((offer) => `
+        <article class="shop-card">
+          <strong>${offer.name}</strong>
+          <p>${offer.text}</p>
+          <button class="small-button" type="button" data-buy="${offer.id}">${money(offer.price)}</button>
+        </article>
+      `).join("") || `<div class="run-meta">商店已售空。</div>`;
+      els.shopList.querySelectorAll("[data-buy]").forEach((button) => {
+        button.addEventListener("click", () => buyJoker(button.dataset.buy));
+      });
     }
 
     function restartGame() {
       state.cash = 0;
+      state.score = 0;
       state.pressure = 0;
-      state.round = 1;
+      state.ante = 1;
+      state.blindIndex = 0;
+      state.hands = maxHands;
+      state.discards = maxDiscards;
+      state.phase = "blind";
       state.baseDebt = 0;
+      state.redHeatStacks = 0;
+      state.ownedJokers = [];
+      state.shop = [];
       state.settling = false;
       state.log = [];
       els.overlay.classList.remove("show");
@@ -866,6 +855,12 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       });
     }
 
+    function animateScore(from, to) {
+      return animateNumber(from, to, 620, (value) => {
+        els.score.textContent = scoreText(value);
+      });
+    }
+
     function animatePressure(from, to) {
       return animateNumber(from, to, 540, (value) => {
         state.pressure = Math.round(value);
@@ -876,11 +871,11 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
 
     function animatePreviewProfit(from, to) {
       return animateNumber(from, to, 480, (value) => {
-        els.previewProfit.textContent = money(value);
+        els.previewProfit.textContent = scoreText(value);
       });
     }
 
-    function animateDualCore(baseFrom, baseTo, multFrom, multTo, profitFrom, profitTo) {
+    function animateDualCore(baseFrom, baseTo, multFrom, multTo) {
       const start = performance.now();
       const duration = 420;
       return new Promise((resolve) => {
@@ -889,10 +884,8 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
           const eased = 1 - Math.pow(1 - t, 3);
           const baseNow = baseFrom + (baseTo - baseFrom) * eased;
           const multNow = multFrom + (multTo - multFrom) * eased;
-          const profitNow = profitFrom + (profitTo - profitFrom) * eased;
           if (els.baseDisplay) els.baseDisplay.textContent = `${Math.round(baseNow)} A`;
           if (els.voltDisplay) els.voltDisplay.textContent = `x${multNow.toFixed(2)}`;
-          if (els.profitDisplay) els.profitDisplay.textContent = money(profitNow);
           if (t < 1) requestAnimationFrame(frame);
           else resolve();
         }
@@ -966,6 +959,10 @@ const targetCurve = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
 
     function money(value) {
       return `¥ ${Math.round(value).toLocaleString("zh-CN")}`;
+    }
+
+    function scoreText(value) {
+      return Math.round(value).toLocaleString("zh-CN");
     }
 
     function formatSigned(value) {
