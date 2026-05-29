@@ -24,7 +24,7 @@ const anteTargets = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       thermal: { name: "方片", icon: "♦", color: "#d54533", suitTone: "red" },
       toxic: { name: "梅花", icon: "♣", color: "#202026", suitTone: "black" }
     };
-    const { SEQUENCES, evaluateIgnitionSequence, applyIgnitionSequence, applySimpleJokers, applyRedHeatCore, createRunState, resolveModule, currentRunProfit, simulatePreview: simulatePreviewCore } = window.GameLogic;
+    const { SEQUENCES, createStandardDeck, evaluateIgnitionSequence, sequenceAtLevel, applyIgnitionSequence, applySimpleJokers, applyRedHeatCore, createRunState, resolveModule, currentRunProfit, simulatePreview: simulatePreviewCore } = window.GameLogic;
 
     const shopJokerCatalog = [
       { id: "chip_plus_30", name: "筹码小丑", price: 4, text: "每次出牌，基础分 +30。" },
@@ -35,47 +35,56 @@ const anteTargets = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
     ];
 
 
-    const BASE_CARD_LEVELS = [
-      { chips: 10, pressure: 1 },
-      { chips: 20, pressure: 3 },
-      { chips: 30, pressure: 5 },
-      { chips: 40, pressure: 8 },
-      { chips: 50, pressure: 12 }
-    ];
-
-    const BASE_CARD_PHASES = [
+    const CARD_PHASE_STYLES = [
       { id: "kinetic", style: ["#f7f2e8", "#e8ddcd", "#202026", "#202026", "#24242a"] },
       { id: "pulse", style: ["#fff3ee", "#efd6cf", "#c73536", "#c73536", "#c73536"] },
       { id: "thermal", style: ["#fff4ed", "#ecd7ce", "#d54533", "#d54533", "#d54533"] },
       { id: "toxic", style: ["#f6f0e6", "#e3d8c6", "#202026", "#202026", "#24242a"] }
     ];
 
-    const catalog = BASE_CARD_PHASES.flatMap((phase) =>
-      BASE_CARD_LEVELS.map((level) => createBaseCardTemplate(phase, level))
-    );
+    const sequenceCatalog = Object.values(SEQUENCES);
+    const shopRefreshPrice = 2;
+    const packPrice = 5;
+    const bossRules = [
+      { id: "faceTax", name: "人头牌过载", text: "J/Q/K/A 每张额外 +4 压力。", applyModule(run, module) {
+        if (module.rank >= 11) run.pressure += 4;
+      } },
+      { id: "lowVoltage", name: "低压禁令", text: "2-6 点基础分减半。", applyModule(run, module) {
+        if (module.rank <= 6) run.base -= Math.ceil(module.chips / 2);
+      } },
+      { id: "suitEcho", name: "同花泄漏", text: "本手重复花色越多，起手压力越高。", applyStart(run, slots) {
+        const counts = new Map();
+        slots.filter(Boolean).forEach((module) => counts.set(module.phase, (counts.get(module.phase) || 0) + 1));
+        const repeats = [...counts.values()].reduce((sum, count) => sum + Math.max(0, count - 1), 0);
+        if (repeats) run.pressure += repeats * 5;
+      } }
+    ];
 
-    function createBaseCardTemplate(phase, level) {
-      const phaseInfo = PHASES[phase.id];
+    function createBaseCardTemplate(deckCard) {
+      const phaseStyle = CARD_PHASE_STYLES.find((phase) => phase.id === deckCard.phase) || CARD_PHASE_STYLES[0];
+      const phaseInfo = PHASES[deckCard.phase];
       return {
-        id: `${phase.id}-${level.chips}`,
-        name: `${level.chips}${phaseInfo.icon}`,
+        id: deckCard.deckId,
+        deckId: deckCard.deckId,
+        name: `${deckCard.rankLabel}${phaseInfo.icon}`,
         kind: "base",
         resourceType: "POWER",
         layer: "L1",
-        phase: phase.id,
-        rank: level.chips,
-        chips: level.chips,
-        pressureCost: level.pressure,
+        phase: deckCard.phase,
+        rank: deckCard.rank,
+        rankLabel: deckCard.rankLabel,
+        chips: deckCard.chips,
+        pressureCost: deckCard.pressureCost,
         trigger: EVENTS.ON_RESOLVE,
-        style: phase.style,
+        style: phaseStyle.style,
         apply(run) {
-          run.base += level.chips;
-          run.pressure += level.pressure;
-          return `${level.chips}${phaseInfo.icon} ▲${level.pressure}`;
+          run.base += deckCard.chips;
+          run.pressure += deckCard.pressureCost;
+          return `${deckCard.rankLabel}${phaseInfo.icon} +${deckCard.chips} / ▲${deckCard.pressureCost}`;
         },
         preview(run) {
-          run.base += level.chips;
-          run.pressure += level.pressure;
+          run.base += deckCard.chips;
+          run.pressure += deckCard.pressureCost;
         }
       };
     }
@@ -94,6 +103,12 @@ const anteTargets = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       redHeatStacks: 0,
       ownedJokers: [],
       shop: [],
+      packChoices: [],
+      handLevels: Object.fromEntries(sequenceCatalog.map((sequence) => [sequence.id, 1])),
+      deck: [],
+      discardPile: [],
+      extraCards: [],
+      bossRule: null,
       hand: [],
       slots: Array(slotCount).fill(null),
       selected: null,
@@ -141,6 +156,7 @@ const anteTargets = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       shopPanel: document.getElementById("shopPanel"),
       shopList: document.getElementById("shopList"),
       ownedJokers: document.getElementById("ownedJokers"),
+      handTable: document.getElementById("handTable"),
       nextBlind: document.getElementById("nextBlindButton")
     };
 
@@ -238,24 +254,42 @@ const anteTargets = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       state.hands = maxHands;
       state.discards = maxDiscards;
       state.phase = "blind";
+      state.packChoices = [];
+      state.bossRule = currentBlind().id === "boss" ? pickBossRule() : null;
       drawHand();
       if (first) {
         logLine(`牌局开始：Ante ${state.ante} ${currentBlind().name}，目标 ${scoreText(currentTarget())}。`);
       } else {
         logLine(`进入 Ante ${state.ante} ${currentBlind().name}，目标 ${scoreText(currentTarget())}。`);
       }
+      if (state.bossRule) logLine(`Boss 规则：${state.bossRule.name} - ${state.bossRule.text}`, "danger");
     }
 
     function drawHand() {
-      const pool = shuffle([...catalog]);
+      state.deck = buildDrawPile();
+      state.discardPile = [];
       state.hand = [];
-      while (state.hand.length < handSize && pool.length) state.hand.push(makeInstance(pool.pop()));
+      refillHand();
     }
 
     function refillHand() {
-      const usedIds = new Set(state.hand.map((card) => card.id));
-      const pool = shuffle(catalog.filter((card) => !usedIds.has(card.id)));
-      while (state.hand.length < handSize && pool.length) state.hand.push(makeInstance(pool.pop()));
+      while (state.hand.length < handSize) {
+        if (!state.deck.length) {
+          if (!state.discardPile.length) break;
+          state.deck = shuffle(state.discardPile.splice(0));
+        }
+        state.hand.push(state.deck.pop());
+      }
+    }
+
+    function buildDrawPile() {
+      const base = createStandardDeck().map(createBaseCardTemplate);
+      const extras = state.extraCards.map(createBaseCardTemplate);
+      return shuffle([...base, ...extras].map(makeInstance));
+    }
+
+    function pickBossRule() {
+      return bossRules[(state.ante + state.blindIndex + randInt(0, bossRules.length - 1)) % bossRules.length];
     }
 
     function makeInstance(module) {
@@ -272,13 +306,16 @@ const anteTargets = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       els.blindName.textContent = currentBlind().name;
       els.handsLeft.textContent = `${state.hands} / ${maxHands}`;
       els.discardsLeft.textContent = `${state.discards} / ${maxDiscards}`;
-      els.targetMeta.textContent = `Ante ${state.ante} · 奖励 ${money(clearReward())}`;
+      els.targetMeta.textContent = state.bossRule
+        ? `Ante ${state.ante} · ${state.bossRule.name} · 牌堆 ${state.deck.length}`
+        : `Ante ${state.ante} · 奖励 ${money(clearReward())} · 牌堆 ${state.deck.length}`;
       renderPressure(state.pressure);
       renderSlots();
       renderRack();
       renderLog();
       renderPreview();
       renderEngine();
+      renderHandReference();
       renderShop();
 
       const hasModule = state.slots.some(Boolean);
@@ -362,6 +399,14 @@ const anteTargets = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       document.documentElement.style.setProperty("--engine-heat", `${Math.min(1, Math.max(0, preview.pressure / 100))}`);
     }
 
+    function renderHandReference() {
+      if (!els.handTable) return;
+      els.handTable.innerHTML = sequenceCatalog.map((sequence) => {
+        const leveled = sequenceAtLevel(sequence, state.handLevels[sequence.id] || 1);
+        return `<div><strong>${sequence.name} Lv.${leveled.level} </strong><span>| ${leveled.base} · x${leveled.mult.toFixed(1)}</span></div>`;
+      }).join("");
+    }
+
     function createCard(module, location) {
       const face = cardFace(module);
       const card = document.createElement("article");
@@ -384,9 +429,8 @@ const anteTargets = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
           <strong>${face.points}</strong>
           <span>${face.suit}</span>
         </div>
-        <div class="card-center">
-          <div class="card-suit">${face.suit}</div>
-          <div class="card-points">${face.points}</div>
+        <div class="card-center ${face.centerClass}">
+          ${renderCardCenter(face)}
         </div>
         <div class="card-corner bottom">
           <strong>${face.points}</strong>
@@ -435,12 +479,41 @@ const anteTargets = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       return card;
     }
 
+    const pipLayouts = {
+      2: ["top-center", "bottom-center"],
+      3: ["top-center", "middle-center", "bottom-center"],
+      4: ["top-left", "top-right", "bottom-left", "bottom-right"],
+      5: ["top-left", "top-right", "middle-center", "bottom-left", "bottom-right"],
+      6: ["top-left", "top-right", "middle-left", "middle-right", "bottom-left", "bottom-right"],
+      7: ["top-left", "top-right", "upper-center", "middle-left", "middle-right", "bottom-left", "bottom-right"],
+      8: ["top-left", "top-right", "upper-center", "middle-left", "middle-right", "lower-center", "bottom-left", "bottom-right"],
+      9: ["top-left", "top-right", "upper-left", "upper-right", "middle-center", "lower-left", "lower-right", "bottom-left", "bottom-right"],
+      10: ["top-left", "top-right", "upper-left", "upper-right", "mid-upper-center", "mid-lower-center", "lower-left", "lower-right", "bottom-left", "bottom-right"]
+    };
+
+    function renderCardCenter(face) {
+      const pips = pipLayouts[face.rank];
+      if (pips) {
+        return `<div class="pip-grid">${pips.map((position) => `<span class="pip ${position}">${face.suit}</span>`).join("")}</div>`;
+      }
+      const faceKind = face.rank === 14 ? "ace" : "royal";
+      return `
+        <div class="face-mark ${faceKind}">
+          <strong>${face.points}</strong>
+          <span>${face.suit}</span>
+        </div>
+      `;
+    }
+
     function cardFace(module) {
+      const rank = Number(module.rank || module.chips || 0);
       return {
         suit: phaseInfo(module).icon,
-        points: module.chips || 0,
+        rank,
+        points: module.rankLabel || module.chips || 0,
         pressure: `▲${module.pressureCost || 0}`,
-        pressureKind: module.pressureCost >= 8 ? "hot" : "cool"
+        pressureKind: module.pressureCost >= 5 ? "hot" : "cool",
+        centerClass: rank >= 2 && rank <= 10 ? `pip-card rank-${rank}` : "face-card"
       };
     }
 
@@ -521,10 +594,12 @@ const anteTargets = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       const selected = state.slots.filter(Boolean);
       if (selected.length) {
         const discarded = new Set(selected.map((card) => card.uid));
+        moveToDiscard(selected);
         state.hand = state.hand.filter((card) => !discarded.has(card.uid));
         state.slots = Array(slotCount).fill(null);
         logLine(`弃掉 ${selected.length} 张牌。`, "warn");
       } else {
+        moveToDiscard(state.hand);
         state.hand = [];
         logLine("弃掉整手牌。", "warn");
       }
@@ -551,10 +626,12 @@ const anteTargets = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
 
       const run = createRunState(state, baseProfit());
       const sequence = evaluateIgnitionSequence(state.slots);
-      applyIgnitionSequence(run, sequence);
+      const sequenceLevel = state.handLevels[sequence.id] || 1;
+      const leveledSequence = applyIgnitionSequence(run, sequence, sequenceLevel);
       applySimpleJokers(run, state.ownedJokers);
-      logLine(`牌型：${sequence.name}，倍率 x${sequence.mult.toFixed(2)}${sequence.limit ? `，红线 +${sequence.limit}` : ""}。`, sequence.limit ? "warn" : "");
+      logLine(`牌型：Lv.${sequenceLevel} ${leveledSequence.name}，基础 ${leveledSequence.base}，倍率 x${leveledSequence.mult.toFixed(2)}${leveledSequence.limit ? `，红线 +${leveledSequence.limit}` : ""}。`, leveledSequence.limit ? "warn" : "");
       logRedHeat(applyRedHeatCore(run, { onPermanentStack: addRedHeatStack }));
+      applyBossStart(run);
 
       if (state.baseDebt > 0) {
         logLine(`旧债点火：基础压力 +${state.baseDebt}`, "danger");
@@ -590,12 +667,13 @@ const anteTargets = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       const beforeBase = run.base;
       const beforeMult = run.multiplier;
       const message = resolveModule(module, run);
+      const bossMessage = applyBossModule(run, module);
       const redHeatMessages = applyRedHeatCore(run, { onPermanentStack: addRedHeatStack });
       const afterProfit = currentRunProfit(run);
       const afterBase = run.base;
       const afterMult = run.multiplier;
 
-      logLine(`${repeated ? "回声牌" : `第 ${index + 1} 张`}：${message}`, run.pressure >= 80 ? "danger" : "");
+      logLine(`${repeated ? "回声牌" : `第 ${index + 1} 张`}：${message}${bossMessage ? ` / ${bossMessage}` : ""}`, run.pressure >= 80 ? "danger" : "");
       logRedHeat(redHeatMessages);
       await Promise.all([
         animatePressure(beforePressure, run.pressure),
@@ -616,6 +694,30 @@ const anteTargets = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
 
     function addRedHeatStack(amount) {
       state.redHeatStacks += amount;
+    }
+
+    function applyBossStart(run) {
+      if (!state.bossRule || typeof state.bossRule.applyStart !== "function") return;
+      const before = run.pressure;
+      state.bossRule.applyStart(run, state.slots);
+      if (run.pressure !== before) {
+        logLine(`Boss 规则触发：${state.bossRule.name}，压力 ${formatSigned(Math.round(run.pressure - before))}`, "danger");
+      }
+      logRedHeat(applyRedHeatCore(run, { onPermanentStack: addRedHeatStack }));
+    }
+
+    function applyBossModule(run, module) {
+      if (!state.bossRule || typeof state.bossRule.applyModule !== "function") return "";
+      const beforePressure = run.pressure;
+      const beforeBase = run.base;
+      state.bossRule.applyModule(run, module);
+      const pressureDelta = Math.round(run.pressure - beforePressure);
+      const baseDelta = Math.round(run.base - beforeBase);
+      if (!pressureDelta && !baseDelta) return "";
+      const parts = [];
+      if (pressureDelta) parts.push(`压力 ${formatSigned(pressureDelta)}`);
+      if (baseDelta) parts.push(`基础 ${formatSigned(baseDelta)}`);
+      return `Boss ${parts.join("，")}`;
     }
 
     function lastFilledSlotIndex() {
@@ -714,10 +816,17 @@ const anteTargets = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
     }
 
     function removePlayedCards() {
-      const played = new Set(state.slots.filter(Boolean).map((card) => card.uid));
+      const playedCards = state.slots.filter(Boolean);
+      const played = new Set(playedCards.map((card) => card.uid));
+      moveToDiscard(playedCards);
       state.hand = state.hand.filter((card) => !played.has(card.uid));
       state.slots = Array(slotCount).fill(null);
       state.selected = null;
+    }
+
+    function moveToDiscard(cards) {
+      const moved = cards.filter(Boolean);
+      if (moved.length) state.discardPile.push(...moved);
     }
 
     function simulatePreview() {
@@ -750,9 +859,8 @@ const anteTargets = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       state.phase = "shop";
       state.slots = Array(slotCount).fill(null);
       state.selected = null;
-      state.shop = shuffle([...shopJokerCatalog])
-        .filter((offer) => !state.ownedJokers.includes(offer.id))
-        .slice(0, 3);
+      state.packChoices = [];
+      state.shop = buildShopOffers();
     }
 
     function nextBlind() {
@@ -780,8 +888,104 @@ const anteTargets = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       }
       state.cash -= offer.price;
       state.ownedJokers.push(id);
-      state.shop = state.shop.filter((joker) => joker.id !== id);
+      state.shop = state.shop.filter((item) => item.id !== id);
       logLine(`购买 Joker：${offer.name}。`);
+      render();
+    }
+
+    function buildShopOffers() {
+      const jokerOffers = shuffle([...shopJokerCatalog])
+        .filter((offer) => !state.ownedJokers.includes(offer.id))
+        .slice(0, 2)
+        .map((offer) => ({ ...offer, type: "joker" }));
+      const upgradeOffers = shuffle([...sequenceCatalog])
+        .slice(0, 1)
+        .map((sequence) => createUpgradeOffer(sequence.id));
+      return shuffle([
+        ...jokerOffers,
+        ...upgradeOffers,
+        { type: "pack", id: "standard-pack", name: "违禁卡包", price: packPrice, text: "打开 3 张标准牌，选择 1 张复制进之后的牌堆。" }
+      ]);
+    }
+
+    function createUpgradeOffer(sequenceId) {
+      const sequence = SEQUENCES[sequenceId];
+      const level = state.handLevels[sequenceId] || 1;
+      return {
+        type: "upgrade",
+        id: `upgrade-${sequenceId}`,
+        sequenceId,
+        name: `升级：${sequence.name}`,
+        price: upgradePrice(sequenceId),
+        text: `当前 Lv.${level}，升级后基础 +${sequence.baseGrowth}，倍率 +${sequence.multGrowth.toFixed(2)}。`
+      };
+    }
+
+    function upgradePrice(sequenceId) {
+      const level = state.handLevels[sequenceId] || 1;
+      return 3 + level * 2;
+    }
+
+    function buyUpgrade(sequenceId) {
+      if (state.phase !== "shop") return;
+      const sequence = SEQUENCES[sequenceId];
+      if (!sequence) return;
+      const price = upgradePrice(sequenceId);
+      if (state.cash < price) {
+        toast("资金不够。");
+        return;
+      }
+      state.cash -= price;
+      state.handLevels[sequenceId] = (state.handLevels[sequenceId] || 1) + 1;
+      state.shop = state.shop.filter((item) => item.sequenceId !== sequenceId);
+      logLine(`升级牌型：${sequence.name} 到 Lv.${state.handLevels[sequenceId]}。`, "warn");
+      render();
+    }
+
+    function buyPack() {
+      if (state.phase !== "shop") return;
+      if (state.cash < packPrice) {
+        toast("资金不够。");
+        return;
+      }
+      state.cash -= packPrice;
+      state.packChoices = shuffle(createStandardDeck()).slice(0, 3);
+      state.shop = state.shop.filter((item) => item.type !== "pack");
+      logLine("打开违禁卡包：选择 1 张牌加入之后的牌堆。", "warn");
+      render();
+    }
+
+    function pickPackCard(deckId) {
+      if (state.phase !== "shop") return;
+      const card = state.packChoices.find((choice) => choice.deckId === deckId);
+      if (!card) return;
+      state.extraCards.push({ ...card });
+      state.packChoices = [];
+      logLine(`卡包加入：${card.rankLabel}${phaseInfo(card).icon}。`, "warn");
+      render();
+    }
+
+    function refreshShop() {
+      if (state.phase !== "shop") return;
+      if (state.cash < shopRefreshPrice) {
+        toast("刷新资金不够。");
+        return;
+      }
+      state.cash -= shopRefreshPrice;
+      state.packChoices = [];
+      state.shop = buildShopOffers();
+      logLine(`刷新商店：花费 ${money(shopRefreshPrice)}。`, "warn");
+      render();
+    }
+
+    function sellJoker(id) {
+      if (state.phase !== "shop") return;
+      const offer = shopJokerCatalog.find((joker) => joker.id === id);
+      if (!offer || !state.ownedJokers.includes(id)) return;
+      const refund = Math.max(1, Math.floor(offer.price / 2));
+      state.ownedJokers = state.ownedJokers.filter((jokerId) => jokerId !== id);
+      state.cash += refund;
+      logLine(`出售 Joker：${offer.name}，回收 ${money(refund)}。`, "warn");
       render();
     }
 
@@ -792,20 +996,75 @@ const anteTargets = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       els.shopPanel.hidden = !open;
       if (!open) return;
 
-      const ownedNames = state.ownedJokers
-        .map((id) => shopJokerCatalog.find((joker) => joker.id === id)?.name)
-        .filter(Boolean);
-      els.ownedJokers.textContent = `已拥有：红温核心${ownedNames.length ? ` / ${ownedNames.join(" / ")}` : ""}`;
-      els.shopList.innerHTML = state.shop.map((offer) => `
-        <article class="shop-card">
+      els.ownedJokers.innerHTML = renderOwnedJokers();
+      els.shopList.innerHTML = `
+        <div class="shop-tools">
+          <span>商店库存</span>
+          <button class="small-button" type="button" data-refresh-shop>刷新 ${money(shopRefreshPrice)}</button>
+        </div>
+        ${state.shop.map(renderShopOffer).join("") || `<div class="run-meta">商店已售空。</div>`}
+        ${renderPackChoices()}
+      `;
+      els.shopList.querySelectorAll("[data-buy-joker]").forEach((button) => {
+        button.addEventListener("click", () => buyJoker(button.dataset.buyJoker));
+      });
+      els.shopList.querySelectorAll("[data-buy-upgrade]").forEach((button) => {
+        button.addEventListener("click", () => buyUpgrade(button.dataset.buyUpgrade));
+      });
+      els.shopList.querySelectorAll("[data-buy-pack]").forEach((button) => {
+        button.addEventListener("click", buyPack);
+      });
+      els.shopList.querySelectorAll("[data-pick-pack]").forEach((button) => {
+        button.addEventListener("click", () => pickPackCard(button.dataset.pickPack));
+      });
+      els.shopList.querySelectorAll("[data-refresh-shop]").forEach((button) => {
+        button.addEventListener("click", refreshShop);
+      });
+      els.ownedJokers.querySelectorAll("[data-sell-joker]").forEach((button) => {
+        button.addEventListener("click", () => sellJoker(button.dataset.sellJoker));
+      });
+    }
+
+    function renderOwnedJokers() {
+      if (!state.ownedJokers.length) return "已拥有：红温核心";
+      const jokers = state.ownedJokers
+        .map((id) => shopJokerCatalog.find((joker) => joker.id === id))
+        .filter(Boolean)
+        .map((joker) => `<button class="owned-joker" type="button" data-sell-joker="${joker.id}" title="出售 ${joker.name}">${joker.name} · 售 ${money(Math.max(1, Math.floor(joker.price / 2)))}</button>`)
+        .join("");
+      return `<div>已拥有：红温核心</div><div class="owned-joker-list">${jokers}</div>`;
+    }
+
+    function renderShopOffer(offer) {
+      const action = offer.type === "joker"
+        ? `<button class="small-button" type="button" data-buy-joker="${offer.id}">${money(offer.price)}</button>`
+        : offer.type === "upgrade"
+          ? `<button class="small-button" type="button" data-buy-upgrade="${offer.sequenceId}">${money(offer.price)}</button>`
+          : `<button class="small-button" type="button" data-buy-pack="${offer.id}">${money(offer.price)}</button>`;
+      return `
+        <article class="shop-card ${offer.type}">
           <strong>${offer.name}</strong>
           <p>${offer.text}</p>
-          <button class="small-button" type="button" data-buy="${offer.id}">${money(offer.price)}</button>
+          ${action}
         </article>
-      `).join("") || `<div class="run-meta">商店已售空。</div>`;
-      els.shopList.querySelectorAll("[data-buy]").forEach((button) => {
-        button.addEventListener("click", () => buyJoker(button.dataset.buy));
-      });
+      `;
+    }
+
+    function renderPackChoices() {
+      if (!state.packChoices.length) return "";
+      return `
+        <section class="pack-choices">
+          <div class="preview-title">卡包三选一</div>
+          <div class="pack-choice-list">
+            ${state.packChoices.map((card) => `
+              <button class="pack-choice" type="button" data-pick-pack="${card.deckId}">
+                <strong>${card.rankLabel}${phaseInfo(card).icon}</strong>
+                <span>基础 ${card.chips} / 压力 ${card.pressureCost}</span>
+              </button>
+            `).join("")}
+          </div>
+        </section>
+      `;
     }
 
     function restartGame() {
@@ -821,6 +1080,12 @@ const anteTargets = [100, 300, 900, 3000, 10000, 32000, 95000, 280000];
       state.redHeatStacks = 0;
       state.ownedJokers = [];
       state.shop = [];
+      state.packChoices = [];
+      state.handLevels = Object.fromEntries(sequenceCatalog.map((sequence) => [sequence.id, 1]));
+      state.deck = [];
+      state.discardPile = [];
+      state.extraCards = [];
+      state.bossRule = null;
       state.settling = false;
       state.log = [];
       els.overlay.classList.remove("show");

@@ -1,15 +1,38 @@
 (function (global) {
   const SEQUENCES = {
-    highCard: { name: "高牌", base: 5, mult: 1, limit: 0 },
-    pair: { name: "对子", base: 10, mult: 2, limit: 0 },
-    twoPair: { name: "两对", base: 20, mult: 2, limit: 0 },
-    threeKind: { name: "三条", base: 30, mult: 3, limit: 0 },
-    straight: { name: "顺子", base: 30, mult: 4, limit: 0 },
-    flush: { name: "同花", base: 35, mult: 4, limit: 0 },
-    fullHouse: { name: "葫芦", base: 40, mult: 4, limit: 0 },
-    fourKind: { name: "四条", base: 60, mult: 7, limit: 0 },
-    straightFlush: { name: "同花顺", base: 100, mult: 8, limit: 0 }
+    highCard: { id: "highCard", name: "高牌", base: 5, mult: 1, limit: 0, baseGrowth: 3, multGrowth: 0.2 },
+    pair: { id: "pair", name: "对子", base: 10, mult: 2, limit: 0, baseGrowth: 5, multGrowth: 0.35 },
+    twoPair: { id: "twoPair", name: "两对", base: 20, mult: 2, limit: 0, baseGrowth: 7, multGrowth: 0.4 },
+    threeKind: { id: "threeKind", name: "三条", base: 30, mult: 3, limit: 0, baseGrowth: 10, multGrowth: 0.55 },
+    straight: { id: "straight", name: "顺子", base: 30, mult: 4, limit: 0, baseGrowth: 10, multGrowth: 0.65 },
+    flush: { id: "flush", name: "同花", base: 35, mult: 4, limit: 0, baseGrowth: 12, multGrowth: 0.7 },
+    fullHouse: { id: "fullHouse", name: "葫芦", base: 40, mult: 4, limit: 0, baseGrowth: 14, multGrowth: 0.75 },
+    fourKind: { id: "fourKind", name: "四条", base: 60, mult: 7, limit: 0, baseGrowth: 18, multGrowth: 1 },
+    straightFlush: { id: "straightFlush", name: "同花顺", base: 100, mult: 8, limit: 0, baseGrowth: 25, multGrowth: 1.2 }
   };
+
+  const STANDARD_RANKS = [
+    { value: 2, label: "2", chips: 2, pressure: 1 },
+    { value: 3, label: "3", chips: 3, pressure: 1 },
+    { value: 4, label: "4", chips: 4, pressure: 1 },
+    { value: 5, label: "5", chips: 5, pressure: 2 },
+    { value: 6, label: "6", chips: 6, pressure: 2 },
+    { value: 7, label: "7", chips: 7, pressure: 2 },
+    { value: 8, label: "8", chips: 8, pressure: 3 },
+    { value: 9, label: "9", chips: 9, pressure: 3 },
+    { value: 10, label: "10", chips: 10, pressure: 3 },
+    { value: 11, label: "J", chips: 11, pressure: 4 },
+    { value: 12, label: "Q", chips: 12, pressure: 4 },
+    { value: 13, label: "K", chips: 13, pressure: 5 },
+    { value: 14, label: "A", chips: 14, pressure: 6 }
+  ];
+
+  const STANDARD_PHASES = [
+    { id: "kinetic", label: "黑桃" },
+    { id: "pulse", label: "红桃" },
+    { id: "thermal", label: "方片" },
+    { id: "toxic", label: "梅花" }
+  ];
 
   function evaluateIgnitionSequence(slots, slotCount = 5) {
     const cards = slots
@@ -50,13 +73,28 @@
     if (!ranks.every((rank) => typeof rank === "number")) return false;
     const unique = [...new Set(ranks)].sort((a, b) => a - b);
     if (unique.length !== 5) return false;
-    return unique.every((rank, index) => index === 0 || rank - unique[index - 1] === 10);
+    const wheel = [2, 3, 4, 5, 14];
+    if (unique.every((rank, index) => rank === wheel[index])) return true;
+    return unique.every((rank, index) => index === 0 || rank - unique[index - 1] === 1);
   }
 
-  function applyIgnitionSequence(run, sequence) {
-    run.base += sequence.base;
-    run.multiplier *= sequence.mult;
-    run.explosionLimit += sequence.limit;
+  function sequenceAtLevel(sequence, level = 1) {
+    const safeLevel = Math.max(1, Math.floor(Number(level) || 1));
+    const extra = safeLevel - 1;
+    return {
+      ...sequence,
+      level: safeLevel,
+      base: sequence.base + extra * (sequence.baseGrowth || 0),
+      mult: sequence.mult + extra * (sequence.multGrowth || 0)
+    };
+  }
+
+  function applyIgnitionSequence(run, sequence, level = 1) {
+    const leveled = sequenceAtLevel(sequence, level);
+    run.base += leveled.base;
+    run.multiplier *= leveled.mult;
+    run.explosionLimit += leveled.limit;
+    return leveled;
   }
 
   function applySimpleJokers(run, jokers = []) {
@@ -156,6 +194,21 @@
     return Math.max(0, Math.round(run.base * run.multiplier));
   }
 
+  function createStandardDeck() {
+    return STANDARD_PHASES.flatMap((phase) =>
+      STANDARD_RANKS.map((rank) => ({
+        id: `${phase.id}-${rank.value}`,
+        deckId: `${phase.id}-${rank.value}`,
+        phase: phase.id,
+        phaseLabel: phase.label,
+        rank: rank.value,
+        rankLabel: rank.label,
+        chips: rank.chips,
+        pressureCost: rank.pressure
+      }))
+    );
+  }
+
   function simulatePreview({ slots, state, baseProfit, resolveModuleFn, slotCount = 5 }) {
     if (!slots.some(Boolean)) {
       return {
@@ -171,14 +224,20 @@
 
     const run = createRunState(state, baseProfit);
     const sequence = evaluateIgnitionSequence(slots, slotCount);
-    applyIgnitionSequence(run, sequence);
+    const sequenceLevel = state.handLevels?.[sequence.id] || 1;
+    const leveledSequence = applyIgnitionSequence(run, sequence, sequenceLevel);
     applySimpleJokers(run, state.ownedJokers || []);
     applyRedHeatCore(run);
+    if (typeof state.bossRule?.applyStart === "function") {
+      state.bossRule.applyStart(run, slots);
+      applyRedHeatCore(run);
+    }
 
     let blown = false;
     for (const module of slots) {
       if (!module) continue;
       resolveModuleFn(module, run, { preview: true });
+      if (typeof state.bossRule?.applyModule === "function") state.bossRule.applyModule(run, module);
       applyRedHeatCore(run);
       if (handlePressureLimit(run) === "blown") blown = true;
     }
@@ -187,6 +246,7 @@
     if (!blown && run.redlineRepeatLast && !run.redlineRepeatUsed && lastModule) {
       run.redlineRepeatUsed = true;
       resolveModuleFn(lastModule, run, { preview: true });
+      if (typeof state.bossRule?.applyModule === "function") state.bossRule.applyModule(run, lastModule);
       applyRedHeatCore(run);
       if (handlePressureLimit(run) === "blown") blown = true;
     }
@@ -210,15 +270,19 @@
       pressure: run.pressure,
       multiplier: run.multiplier,
       limit: run.explosionLimit,
-      sequence,
+      sequence: leveledSequence,
       riskText
     };
   }
 
   const api = {
     SEQUENCES,
+    STANDARD_RANKS,
+    STANDARD_PHASES,
     evaluateIgnitionSequence,
+    sequenceAtLevel,
     applyIgnitionSequence,
+    createStandardDeck,
     applySimpleJokers,
     applyRedHeatCore,
     createRunState,

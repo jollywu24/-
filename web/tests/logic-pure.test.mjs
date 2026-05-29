@@ -2,25 +2,43 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import pkg from '../logic-pure.js';
 
-const { evaluateIgnitionSequence, applySimpleJokers, applyRedHeatCore, createRunState, simulatePreview } = pkg;
+const { evaluateIgnitionSequence, sequenceAtLevel, applySimpleJokers, applyRedHeatCore, createRunState, createStandardDeck, simulatePreview } = pkg;
 
 function card(rank, phase = 'kinetic') {
   return { chips: rank, phase };
 }
 
 test('evaluateIgnitionSequence follows Balatro poker hand priority', () => {
-  assert.equal(evaluateIgnitionSequence([card(10), card(20, 'pulse'), card(30, 'thermal'), card(40, 'toxic'), card(50)]).name, '顺子');
-  assert.equal(evaluateIgnitionSequence([card(10), card(10, 'pulse'), card(30), card(40), card(50)]).name, '对子');
-  assert.equal(evaluateIgnitionSequence([card(10), card(10, 'pulse'), card(30), card(30, 'toxic'), card(50)]).name, '两对');
-  assert.equal(evaluateIgnitionSequence([card(10), card(10, 'pulse'), card(30), card(30, 'toxic'), null]).name, '两对');
-  assert.equal(evaluateIgnitionSequence([card(10), card(10, 'pulse'), card(10, 'thermal'), card(40), card(50)]).name, '三条');
-  assert.equal(evaluateIgnitionSequence([card(10), card(10, 'pulse'), card(10, 'thermal'), card(30), card(30, 'toxic')]).name, '葫芦');
-  assert.equal(evaluateIgnitionSequence([card(10), card(10, 'pulse'), card(10, 'thermal'), card(10, 'toxic'), card(50)]).name, '四条');
+  assert.equal(evaluateIgnitionSequence([card(2), card(3, 'pulse'), card(4, 'thermal'), card(5, 'toxic'), card(6)]).name, '顺子');
+  assert.equal(evaluateIgnitionSequence([card(10), card(10, 'pulse'), card(3), card(4), card(5)]).name, '对子');
+  assert.equal(evaluateIgnitionSequence([card(10), card(10, 'pulse'), card(3), card(3, 'toxic'), card(5)]).name, '两对');
+  assert.equal(evaluateIgnitionSequence([card(10), card(10, 'pulse'), card(3), card(3, 'toxic'), null]).name, '两对');
+  assert.equal(evaluateIgnitionSequence([card(10), card(10, 'pulse'), card(10, 'thermal'), card(4), card(5)]).name, '三条');
+  assert.equal(evaluateIgnitionSequence([card(10), card(10, 'pulse'), card(10, 'thermal'), card(3), card(3, 'toxic')]).name, '葫芦');
+  assert.equal(evaluateIgnitionSequence([card(10), card(10, 'pulse'), card(10, 'thermal'), card(10, 'toxic'), card(5)]).name, '四条');
 });
 
 test('evaluateIgnitionSequence detects flush and straight flush', () => {
-  assert.equal(evaluateIgnitionSequence([card(10), card(10), card(20), card(30), card(50)]).name, '同花');
-  assert.equal(evaluateIgnitionSequence([card(10), card(20), card(30), card(40), card(50)]).name, '同花顺');
+  assert.equal(evaluateIgnitionSequence([card(2), card(4), card(7), card(9), card(13)]).name, '同花');
+  assert.equal(evaluateIgnitionSequence([card(2), card(3), card(4), card(5), card(6)]).name, '同花顺');
+  assert.equal(evaluateIgnitionSequence([card(14), card(2), card(3), card(4), card(5)]).name, '同花顺');
+});
+
+test('createStandardDeck builds a true 52 card deck from 2 through A', () => {
+  const deck = createStandardDeck();
+  assert.equal(deck.length, 52);
+  assert.equal(new Set(deck.map((card) => card.deckId)).size, 52);
+  assert.deepEqual([...new Set(deck.map((card) => card.rank))].sort((a, b) => a - b), [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+  assert.equal(deck.filter((card) => card.rankLabel === 'A').length, 4);
+});
+
+test('sequenceAtLevel scales poker hand rewards without changing level one', () => {
+  const pair = pkg.SEQUENCES.pair;
+  assert.deepEqual(sequenceAtLevel(pair, 1).base, pair.base);
+  const leveled = sequenceAtLevel(pair, 3);
+  assert.equal(leveled.level, 3);
+  assert.equal(leveled.base, pair.base + pair.baseGrowth * 2);
+  assert.equal(leveled.mult, pair.mult + pair.multGrowth * 2);
 });
 
 test('single 10-point base card previews as card chips plus high-card base', () => {
@@ -161,4 +179,28 @@ test('simulatePreview repeats the last module after first redline entry', () => 
     },
   });
   assert.equal(out.base, 100 + out.sequence.base + 20);
+});
+
+test('simulatePreview applies boss blind negative rules', () => {
+  const slots = [
+    { rank: 14, phase: 'pulse', trigger: 'ON_RESOLVE', preview: (run) => { run.base += 14; run.pressure += 6; } },
+  ];
+  const out = simulatePreview({
+    slots,
+    state: {
+      pressure: 0,
+      baseDebt: 0,
+      redHeatStacks: 0,
+      bossRule: {
+        applyModule(run, module) {
+          if (module.rank >= 11) run.pressure += 4;
+        },
+      },
+    },
+    baseProfit: 0,
+    resolveModuleFn: (m, run, options) => {
+      if (options?.preview) m.preview(run);
+    },
+  });
+  assert.equal(out.pressure, 10);
 });
