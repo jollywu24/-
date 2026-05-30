@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import pkg from '../logic-pure.js';
 
-const { evaluateIgnitionSequence, sequenceAtLevel, applySimpleJokers, applyRedHeatCore, createRunState, createStandardDeck, simulatePreview } = pkg;
+const { evaluateIgnitionSequence, sequenceAtLevel, applySimpleJokers, applyRedHeatCore, createRunState, createRng, createStandardDeck, simulatePreview } = pkg;
 
 function card(rank, phase = 'kinetic') {
   return { chips: rank, phase };
@@ -30,6 +30,15 @@ test('createStandardDeck builds a true 52 card deck from 2 through A', () => {
   assert.equal(new Set(deck.map((card) => card.deckId)).size, 52);
   assert.deepEqual([...new Set(deck.map((card) => card.rank))].sort((a, b) => a - b), [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
   assert.equal(deck.filter((card) => card.rankLabel === 'A').length, 4);
+});
+
+test('createRng returns repeatable sequences for the same seed', () => {
+  const first = createRng('balance-42');
+  const second = createRng('balance-42');
+  assert.deepEqual(
+    Array.from({ length: 8 }, () => first()),
+    Array.from({ length: 8 }, () => second())
+  );
 });
 
 test('sequenceAtLevel scales poker hand rewards without changing level one', () => {
@@ -132,7 +141,7 @@ test('simulatePreview keeps deterministic order effects (base then mult)', () =>
 
 test('red heat converts current pressure into additive multiplier', () => {
   const run = createRunState({ pressure: 40, baseDebt: 0, redHeatStacks: 0 }, 100);
-  applyRedHeatCore(run);
+  applyRedHeatCore(run, { ownedJokers: ['thermal_crank'] });
   assert.equal(run.multiplier, 7);
 });
 
@@ -148,7 +157,10 @@ test('red heat doubles multiplier and grants permanent stack when entering redli
   const run = createRunState({ pressure: 70, baseDebt: 0, redHeatStacks: 0 }, 100);
   run.pressure = 80;
   let stacks = 0;
-  const messages = applyRedHeatCore(run, { onPermanentStack: (amount) => { stacks += amount; } });
+  const messages = applyRedHeatCore(run, {
+    ownedJokers: ['thermal_crank', 'redline_protocol', 'red_heat_memory', 'echo_overload'],
+    onPermanentStack: (amount) => { stacks += amount; },
+  });
   assert.equal(stacks, 1);
   assert.equal(run.redHeatStacks, 1);
   assert.equal(run.redlineRepeatLast, true);
@@ -159,9 +171,9 @@ test('red heat doubles multiplier and grants permanent stack when entering redli
 test('red heat doubles base power once above pressure 90', () => {
   const run = createRunState({ pressure: 0, baseDebt: 0, redHeatStacks: 0 }, 100);
   run.pressure = 91;
-  applyRedHeatCore(run);
+  applyRedHeatCore(run, { ownedJokers: ['furnace_critical'] });
   assert.equal(run.base, 200);
-  applyRedHeatCore(run);
+  applyRedHeatCore(run, { ownedJokers: ['furnace_critical'] });
   assert.equal(run.base, 200);
 });
 
@@ -172,7 +184,7 @@ test('simulatePreview repeats the last module after first redline entry', () => 
   ];
   const out = simulatePreview({
     slots,
-    state: { pressure: 0, baseDebt: 0, redHeatStacks: 0 },
+    state: { pressure: 0, baseDebt: 0, redHeatStacks: 0, ownedJokers: ['echo_overload'] },
     baseProfit: 100,
     resolveModuleFn: (m, run, options) => {
       if (options?.preview) m.preview(run);

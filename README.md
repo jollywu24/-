@@ -28,6 +28,11 @@ python -m http.server 8000
 # 然后访问 http://localhost:8000/web/
 ```
 
+可复现调试：
+```text
+http://localhost:8000/web/?seed=balance-42
+```
+
 发布为 GitHub 可访问链接的步骤见：`.github_pages.md`。
 
 
@@ -52,3 +57,4 @@ python -m http.server 8000
 - `BALATRO_HAND_SYSTEM.md`：Balatro 牌型系统拆解和当前照抄规则。
 - `BALATRO_FULL_DESIGN_BREAKDOWN.md`：完整拆解 Balatro 设计框架，并记录本项目当前核心循环落地。
 - `MVP_PLAN.md`：当前 MVP 优先级、验收标准和暂不做范围。
+- `DEV_LOG_2026-05-30.md`：今天的真实状态、UI/结算经验和下一步建议。

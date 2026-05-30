@@ -34,6 +34,23 @@
     { id: "toxic", label: "梅花" }
   ];
 
+  function createRng(seed = "abyss") {
+    let hash = 2166136261;
+    const text = String(seed);
+    for (let index = 0; index < text.length; index += 1) {
+      hash ^= text.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    let state = hash >>> 0;
+    return function rng() {
+      state += 0x6D2B79F5;
+      let value = state;
+      value = Math.imul(value ^ (value >>> 15), value | 1);
+      value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+      return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
   function evaluateIgnitionSequence(slots, slotCount = 5) {
     const cards = slots
       .map((module, index) => (module ? { phase: module.phase, rank: cardRank(module, index) } : null))
@@ -112,9 +129,10 @@
   }
 
   function createRunState(state, baseProfit) {
+    const owned = state.ownedJokers || [];
     return {
       base: baseProfit,
-      multiplier: 1 + (state.redHeatStacks || 0),
+      multiplier: 1 + (owned.includes("red_heat_memory") ? (state.redHeatStacks || 0) : 0),
       pressure: state.pressure + state.baseDebt,
       explosionLimit: 100,
       nextDebt: 0,
@@ -131,8 +149,9 @@
   }
 
   function applyRedHeatCore(run, options = {}) {
+    const owned = options.ownedJokers || [];
     const messages = [];
-    const pressureBonus = Math.max(0, run.pressure) * 0.15;
+    const pressureBonus = owned.includes("thermal_crank") ? Math.max(0, run.pressure) * 0.15 : 0;
     if (pressureBonus > 0) {
       run.multiplier += pressureBonus;
       messages.push(`热压曲柄：当前压力 ${Math.round(run.pressure)}，倍率 +${pressureBonus.toFixed(2)}`);
@@ -141,14 +160,20 @@
     const inRedline = run.pressure >= 80;
     if (inRedline && !run.redlineWasActive) {
       run.redlineTrips += 1;
-      run.redHeatStacks += 1;
-      run.multiplier += 1;
-      run.multiplier *= 2;
-      run.redlineRepeatLast = true;
-      messages.push("红区协议：首次进红区，所有倍率 x2");
-      messages.push(`红温记忆：永久倍率 +1（当前 ${run.redHeatStacks}）`);
-      messages.push("回声过载：本轮最后一张牌将重复触发");
-      if (typeof options.onPermanentStack === "function") options.onPermanentStack(1);
+      if (owned.includes("redline_protocol")) {
+        run.multiplier *= 2;
+        messages.push("红区协议：首次进红区，所有倍率 x2");
+      }
+      if (owned.includes("red_heat_memory")) {
+        run.redHeatStacks += 1;
+        run.multiplier += 1;
+        messages.push(`红温记忆：永久倍率 +1（当前 ${run.redHeatStacks}）`);
+        if (typeof options.onPermanentStack === "function") options.onPermanentStack(1);
+      }
+      if (owned.includes("echo_overload")) {
+        run.redlineRepeatLast = true;
+        messages.push("回声过载：本轮最后一张牌将重复触发");
+      }
     }
 
     if (!inRedline && run.redlineWasActive) {
@@ -157,7 +182,7 @@
       run.redlineWasActive = true;
     }
 
-    if (run.pressure > 90 && !run.redlinePowerDoubled) {
+    if (owned.includes("furnace_critical") && run.pressure > 90 && !run.redlinePowerDoubled) {
       run.base *= 2;
       run.redlinePowerDoubled = true;
       messages.push("熔炉临界：压力超过 90，基础功率 x2");
@@ -227,10 +252,10 @@
     const sequenceLevel = state.handLevels?.[sequence.id] || 1;
     const leveledSequence = applyIgnitionSequence(run, sequence, sequenceLevel);
     applySimpleJokers(run, state.ownedJokers || []);
-    applyRedHeatCore(run);
+    applyRedHeatCore(run, { ownedJokers: state.ownedJokers || [] });
     if (typeof state.bossRule?.applyStart === "function") {
       state.bossRule.applyStart(run, slots);
-      applyRedHeatCore(run);
+      applyRedHeatCore(run, { ownedJokers: state.ownedJokers || [] });
     }
 
     let blown = false;
@@ -238,7 +263,7 @@
       if (!module) continue;
       resolveModuleFn(module, run, { preview: true });
       if (typeof state.bossRule?.applyModule === "function") state.bossRule.applyModule(run, module);
-      applyRedHeatCore(run);
+      applyRedHeatCore(run, { ownedJokers: state.ownedJokers || [] });
       if (handlePressureLimit(run) === "blown") blown = true;
     }
 
@@ -247,7 +272,7 @@
       run.redlineRepeatUsed = true;
       resolveModuleFn(lastModule, run, { preview: true });
       if (typeof state.bossRule?.applyModule === "function") state.bossRule.applyModule(run, lastModule);
-      applyRedHeatCore(run);
+      applyRedHeatCore(run, { ownedJokers: state.ownedJokers || [] });
       if (handlePressureLimit(run) === "blown") blown = true;
     }
 
@@ -279,6 +304,7 @@
     SEQUENCES,
     STANDARD_RANKS,
     STANDARD_PHASES,
+    createRng,
     evaluateIgnitionSequence,
     sequenceAtLevel,
     applyIgnitionSequence,

@@ -11,6 +11,16 @@
   <main class="shell" id="shell">
     <section class="game">
       <aside class="left">
+        <section class="hud-round">
+          <span>回合</span>
+          <strong id="roundDisplay">1/8</strong>
+        </section>
+
+        <button class="codex-button" id="codexButton" type="button">
+          <span class="info-icon" aria-hidden="true">i</span>
+          <strong>比赛信息</strong>
+        </button>
+
         <div class="brand">
           <div class="version">DEMO v0.1.0</div>
           <h1 class="title">红温牌局</h1>
@@ -19,21 +29,21 @@
 
         <div class="stats">
           <div class="panel stat">
-            <div class="label">当前资金</div>
-            <div class="value" id="cash">¥ 0</div>
+            <div class="label">盲注目标</div>
+            <div class="value small" id="target">100</div>
+            <div class="run-meta" id="targetMeta">小盲注</div>
           </div>
           <div class="panel stat">
             <div class="label">当前得分</div>
             <div class="value" id="score">0</div>
           </div>
           <div class="panel stat">
-            <div class="label">盲注目标</div>
-            <div class="value small" id="target">¥ 100</div>
-            <div class="run-meta" id="targetMeta">小盲注</div>
-          </div>
-          <div class="panel stat">
             <div class="label">当前盲注</div>
             <div class="value small" id="blindName">小盲注</div>
+          </div>
+          <div class="panel stat">
+            <div class="label">金币</div>
+            <div class="value" id="cash">$0</div>
           </div>
           <div class="panel stat">
             <div class="label">出牌次数</div>
@@ -46,11 +56,14 @@
         </div>
 
         <section class="left-score-stack">
-          <section class="panel multiplier-engine">
-            <div class="engine-title">出牌预览</div>
+          <section class="panel multiplier-engine compact-hidden">
+            <div class="engine-title">
+              <strong id="handNameDisplay">未出牌</strong>
+              <span id="handLevelDisplay">等级1</span>
+            </div>
             <div class="dual-core" aria-label="基础分倍率">
               <div class="dual-node base">
-                <span>基础分</span>
+                <span>等码</span>
                 <strong id="baseDisplay">0</strong>
               </div>
               <div class="dual-node mult">
@@ -68,10 +81,10 @@
             </div>
           </section>
 
-          <aside class="engine-readouts">
+          <aside class="engine-readouts compact-hidden">
             <div class="panel readout">
-              <span>收益增幅</span>
-              <strong id="yieldBoost">+0%</strong>
+              <span>牌型倍率</span>
+              <strong id="yieldBoost">x1.00</strong>
             </div>
             <div class="panel readout">
               <span>牌型</span>
@@ -103,19 +116,14 @@
             </div>
           </section>
 
-          <div class="panel trend-box">
-            <div class="preview-title">压力趋势</div>
+          <div class="panel trend-box compact-hidden">
+            <div class="preview-title">已选牌</div>
             <strong id="pressureTrend">+0</strong>
-            <span>预计变化</span>
+            <span>最多 5 张</span>
           </div>
         </section>
 
-        <button class="codex-button" id="codexButton" type="button">
-          <span class="mini-icon" aria-hidden="true"></span>
-          <strong>牌组</strong>
-        </button>
-
-        <section class="panel log">
+        <section class="panel log compact-hidden">
           <div class="log-title">运行日志</div>
           <div class="log-list" id="log"></div>
         </section>
@@ -123,33 +131,7 @@
 
       <section class="center">
         <div class="topbar">
-          <section class="joker-strip" aria-label="Joker">
-            <article class="joker-card red">
-              <span>JOKER</span>
-              <strong>热压曲柄</strong>
-              <p>当前压力每 1 点，倍率 +0.15</p>
-            </article>
-            <article class="joker-card violet">
-              <span>JOKER</span>
-              <strong>红区协议</strong>
-              <p>进入红区后，所有倍率翻倍</p>
-            </article>
-            <article class="joker-card cyan">
-              <span>JOKER</span>
-              <strong>熔炉临界</strong>
-              <p>压力超过 90，基础功率 x2</p>
-            </article>
-            <article class="joker-card amber">
-              <span>JOKER</span>
-              <strong>红温记忆</strong>
-              <p>每次进入红区，永久倍率 +1</p>
-            </article>
-            <article class="joker-card green">
-              <span>JOKER</span>
-              <strong>回声过载</strong>
-              <p>进入红区后，最后一张牌重复触发</p>
-            </article>
-          </section>
+          <section class="joker-strip" id="jokerStrip" aria-label="Joker"></section>
 
           <nav class="toolbar" aria-label="工具">
             <button class="icon-button" id="soundButton" type="button" title="音效">
@@ -182,40 +164,70 @@
         <section class="panel rack">
           <div class="rack-head">
             <div class="rack-title">手牌</div>
-            <button class="small-button" id="refreshButton" type="button">弃牌 [R]</button>
           </div>
           <div class="rack-list" id="rack"></div>
+        </section>
+
+        <section class="payout-panel" id="payoutPanel" hidden>
+          <button class="cashout-button" id="cashoutButton" type="button">提现：$0</button>
+          <div class="payout-card">
+            <div class="payout-row target">
+              <span>至少得分</span>
+              <strong id="payoutTarget">0</strong>
+              <em id="payoutRating">$$$$$</em>
+            </div>
+            <div class="payout-divider"></div>
+            <div class="payout-row">
+              <span id="payoutBlindText">盲注奖励</span>
+              <strong id="payoutBlindReward">$0</strong>
+            </div>
+            <div class="payout-row">
+              <span id="payoutHandsText">剩余出牌次数</span>
+              <strong id="payoutHandsReward">$0</strong>
+            </div>
+            <div class="payout-row">
+              <span id="payoutInterestText">利息</span>
+              <strong id="payoutInterestReward">$0</strong>
+            </div>
+          </div>
         </section>
 
       </section>
 
       <aside class="right">
-        <section class="panel lever-panel">
-          <button class="pull" id="pullButton" type="button">出 牌<span>PLAY</span></button>
-          <div class="lever-note">结算当前牌型</div>
+        <section class="panel deck-panel">
+          <button class="deck-stack" id="deckButton" type="button" aria-label="牌组">
+            <span class="deck-card-back"></span>
+            <strong id="deckCount">0 / 52</strong>
+          </button>
         </section>
 
-        <section class="panel preview">
+        <section class="action-stack">
+          <button class="pull hand-play" id="pullButton" type="button">出 牌<span>提交手牌</span></button>
+          <button class="small-button hand-discard" id="refreshButton" type="button">弃 牌<span>放弃当前手牌</span></button>
+        </section>
+
+        <section class="panel preview compact-hidden">
           <div class="preview-head">
-            <div class="preview-title">本轮预估</div>
+            <div class="preview-title">牌型预览</div>
           </div>
           <div class="preview-grid">
             <div class="preview-row">
-              <span>预计得分</span>
-              <strong id="previewProfit">¥ 0</strong>
-            </div>
-            <div class="preview-row danger">
-              <span>预计最终压力</span>
-              <strong id="previewPressure">0 / 100</strong>
+              <span>牌型基础分</span>
+              <strong id="previewProfit">0</strong>
             </div>
             <div class="preview-row">
-              <span>爆炸风险</span>
+              <span>牌型倍率</span>
+              <strong id="previewPressure">x1.00</strong>
+            </div>
+            <div class="preview-row">
+              <span>当前牌型</span>
               <strong id="previewRisk">未知</strong>
             </div>
           </div>
         </section>
 
-        <section class="panel hand-reference" aria-label="牌型说明">
+        <section class="panel hand-reference compact-hidden" aria-label="牌型说明">
           <div class="preview-title">牌型说明</div>
           <div class="hand-table" id="handTable">
             <div><strong>高牌</strong><span>5 x1</span></div>
@@ -231,10 +243,20 @@
         </section>
 
         <section class="panel shop-panel" id="shopPanel" aria-label="商店">
-          <div class="preview-title">商店</div>
-          <div class="shop-owned" id="ownedJokers">已拥有：红温核心</div>
-          <div class="shop-list" id="shopList"></div>
-          <button class="small-button shop-next" id="nextBlindButton" type="button">进入下一盲注</button>
+          <div class="shop-sign">
+            <span>SHOP</span>
+            <strong>来变强吧！</strong>
+          </div>
+          <div class="shop-table">
+            <aside class="shop-controls">
+              <button class="shop-next" id="nextBlindButton" type="button">下一回合</button>
+              <button class="shop-reroll" id="shopRerollButton" type="button">重掷 $2</button>
+            </aside>
+            <section class="shop-board">
+              <div class="shop-owned" id="ownedJokers">已拥有：无</div>
+              <div class="shop-list" id="shopList"></div>
+            </section>
+          </div>
         </section>
       </aside>
     </section>
@@ -252,9 +274,24 @@
     </div>
   </div>
 
+  <div class="resource-overlay" id="resourceOverlay" role="dialog" aria-modal="true" hidden>
+    <div class="resource-modal">
+      <div class="resource-head">
+        <strong>比赛资源</strong>
+        <button class="icon-button" id="resourceCloseButton" type="button" title="关闭">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12"></path>
+            <path d="M18 6 6 18"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="resource-body" id="resourceBody"></div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
-    <script src="./logic-pure.js?v=coreloop-2"></script>
-  <script src="./app.js?v=coreloop-2"></script>
+    <script src="./logic-pure.js?v=coreloop-12"></script>
+  <script src="./app.js?v=coreloop-12"></script>
 </body>
 </html>
