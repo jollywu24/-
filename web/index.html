@@ -4,294 +4,222 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" href="data:," />
-  <title>红温牌局 Demo v0.1</title>
-    <link rel="stylesheet" href="./style.css" />
+  <title>深渊赌局</title>
+  <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-  <main class="shell" id="shell">
-    <section class="game">
-      <aside class="left">
-        <section class="hud-round">
-          <span>回合</span>
-          <strong id="roundDisplay">1/8</strong>
-        </section>
+  <div class="viewport" aria-label="1600x900 fixed game viewport">
+    <main class="game-board">
+      <aside class="left-panel frame">
+        <header class="brand-block">
+          <i class="cross-mark" aria-hidden="true"></i>
+          <h1>深渊赌局</h1>
+          <i class="cross-mark" aria-hidden="true"></i>
+        </header>
 
-        <button class="codex-button" id="codexButton" type="button">
-          <span class="info-icon" aria-hidden="true">i</span>
-          <strong>比赛信息</strong>
+        <button class="info-button" type="button">
+          <span class="button-seal" aria-hidden="true">♟</span>
+          比赛信息
         </button>
 
-        <div class="brand">
-          <div class="version">DEMO v0.1.0</div>
-          <h1 class="title">红温牌局</h1>
-          <div class="subtitle">REDLINE POKER</div>
-        </div>
-
-        <div class="stats">
-          <div class="panel stat">
-            <div class="label">盲注目标</div>
-            <div class="value small" id="target">100</div>
-            <div class="run-meta" id="targetMeta">小盲注</div>
+        <section class="score-stack">
+          <div class="score-row">
+            <span class="row-icon" aria-hidden="true">◉</span>
+            <span>目标分数</span>
+            <strong class="red-number">300</strong>
           </div>
-          <div class="panel stat">
-            <div class="label">当前得分</div>
-            <div class="value" id="score">0</div>
-          </div>
-          <div class="panel stat">
-            <div class="label">当前盲注</div>
-            <div class="value small" id="blindName">小盲注</div>
-          </div>
-          <div class="panel stat">
-            <div class="label">金币</div>
-            <div class="value" id="cash">$0</div>
-          </div>
-          <div class="panel stat">
-            <div class="label">出牌次数</div>
-            <div class="value small" id="handsLeft">4</div>
-          </div>
-          <div class="panel stat">
-            <div class="label">弃牌次数</div>
-            <div class="value small" id="discardsLeft">3</div>
-          </div>
-        </div>
-
-        <section class="left-score-stack">
-          <section class="panel multiplier-engine compact-hidden">
-            <div class="engine-title">
-              <strong id="handNameDisplay">未出牌</strong>
-              <span id="handLevelDisplay">等级1</span>
-            </div>
-            <div class="dual-core" aria-label="基础分倍率">
-              <div class="dual-node base">
-                <span>等码</span>
-                <strong id="baseDisplay">0</strong>
-              </div>
-              <div class="dual-node mult">
-                <span>倍率</span>
-                <strong id="voltDisplay">x1.00</strong>
-              </div>
-            </div>
-            <div class="multiplier-value" id="multiplierDisplay">x1.00</div>
-            <div class="chain-panel">
-              <span>已出牌</span>
-              <div class="chain-track" aria-hidden="true">
-                <i></i><i></i><i></i><i></i><i></i>
-              </div>
-              <strong id="chainText">0 / 5</strong>
-            </div>
-          </section>
-
-          <aside class="engine-readouts compact-hidden">
-            <div class="panel readout">
-              <span>牌型倍率</span>
-              <strong id="yieldBoost">x1.00</strong>
-            </div>
-            <div class="panel readout">
-              <span>牌型</span>
-              <strong id="chainGain">未出牌</strong>
-            </div>
-            <div class="panel readout hot">
-              <span>红温记忆</span>
-              <strong id="overloadGain">+0</strong>
-            </div>
-          </aside>
-
-          <section class="panel pressure-console">
-            <div class="console-title">压力</div>
-            <div class="meter-shell">
-              <div class="meter-arc"></div>
-              <div class="meter-mark left">0</div>
-              <div class="meter-mark mid">50</div>
-              <div class="meter-mark redline">80</div>
-              <div class="meter-mark right">100</div>
-              <div class="needle" id="needle"></div>
-              <div class="meter-center">
-                <div class="pressure-value" id="pressure">0</div>
-                <div class="pressure-label">/ 100</div>
-              </div>
-              <div class="danger-sign">
-                红区
-                <span>80-100 警戒，>100 熔毁</span>
-              </div>
-            </div>
-          </section>
-
-          <div class="panel trend-box compact-hidden">
-            <div class="preview-title">已选牌</div>
-            <strong id="pressureTrend">+0</strong>
-            <span>最多 5 张</span>
+          <div class="score-row">
+            <span class="row-icon" aria-hidden="true">✹</span>
+            <span>当前分数</span>
+            <strong>0</strong>
           </div>
         </section>
 
-        <section class="panel log compact-hidden">
-          <div class="log-title">运行日志</div>
-          <div class="log-list" id="log"></div>
+        <section class="hand-summary">
+          <div class="hand-title">
+            <strong>两对</strong>
+            <span>等级 I</span>
+          </div>
+          <div class="formula-row">
+            <div class="score-chip blue">
+              <strong>80</strong>
+              <span>筹码</span>
+            </div>
+            <b class="multiply">×</b>
+            <div class="score-chip red">
+              <strong>15</strong>
+              <span>倍率</span>
+            </div>
+          </div>
+          <div class="stake-row">
+            <span>赌资</span>
+            <strong>12</strong>
+          </div>
+        </section>
+
+        <section class="tilt-meter">
+          <div class="section-title">上头值 <strong>0%</strong></div>
+          <div class="eye-meter" aria-label="上头值 0%">
+            <div class="eye-ring"></div>
+            <div class="eye-core"></div>
+            <div class="meter-hand"></div>
+          </div>
+          <ul class="tilt-labels">
+            <li><span>冷手</span><em>0-30%</em></li>
+            <li><span>热手</span><em>30-60%</em></li>
+            <li class="hot"><span>红眼</span><em>60-90%</em></li>
+            <li><span>鬼压桌</span><em>90-100%</em></li>
+          </ul>
+        </section>
+
+        <section class="count-stack">
+          <div><span>摊牌</span><strong class="blue-text">2 / 3</strong></div>
+          <div><span>换牌</span><strong>1 / 2</strong></div>
         </section>
       </aside>
 
-      <section class="center">
-        <div class="topbar">
-          <section class="joker-strip" id="jokerStrip" aria-label="Joker"></section>
-
-          <nav class="toolbar" aria-label="工具">
-            <button class="icon-button" id="soundButton" type="button" title="音效">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 10v4h4l5 4V6L8 10H4Z"></path>
-                <path d="M17 9a4 4 0 0 1 0 6"></path>
-                <path d="M19.5 6.5a8 8 0 0 1 0 11"></path>
-              </svg>
-            </button>
-            <button class="icon-button" id="settingsButton" type="button" title="重开">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M21 12a9 9 0 1 1-3-6.7"></path>
-                <path d="M21 3v6h-6"></path>
-              </svg>
-            </button>
-            <button class="icon-button" id="helpButton" type="button" title="概率">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M9.2 9a3 3 0 1 1 5.1 2.1c-1.4 1.1-2.3 1.7-2.3 3.4"></path>
-                <path d="M12 18h.01"></path>
-                <circle cx="12" cy="12" r="10"></circle>
-              </svg>
-            </button>
-          </nav>
+      <section class="joker-zone">
+        <div class="zone-title"><span></span><strong>赌鬼</strong><span></span></div>
+        <div class="joker-row">
+          <article class="joker-card rare-orange">
+            <div class="portrait dealer"></div>
+            <h2>诡笑庄家</h2>
+            <p>每回合第一次<br>出牌 +10 筹码</p>
+            <div class="stars">★◇◇◇◇</div>
+          </article>
+          <article class="joker-card rare-orange">
+            <div class="portrait debtor"></div>
+            <h2>借命赌徒</h2>
+            <p>上头值每增加10%<br>倍率 +2</p>
+            <div class="stars">★★◇◇◇</div>
+          </article>
+          <article class="joker-card rare-blue">
+            <div class="portrait lady"></div>
+            <h2>命运荷官</h2>
+            <p>换牌时有20%几率<br>不消耗次数</p>
+            <div class="stars">★★★◇◇</div>
+          </article>
+          <article class="joker-card rare-orange">
+            <div class="portrait collector"></div>
+            <h2>血债收账人</h2>
+            <p>出同花顺 / 炸弹<br>+30 筹码</p>
+            <div class="stars">★★◇◇◇</div>
+          </article>
+          <article class="joker-card rare-purple">
+            <div class="portrait reaper"></div>
+            <h2>厄运撒票者</h2>
+            <p>换牌时有15%几率<br>获得 +1 次换牌</p>
+            <div class="stars">★★★★◇</div>
+          </article>
         </div>
-
-        <section class="panel machine">
-          <div class="slots" id="slots"></div>
-        </section>
-
-        <section class="panel rack">
-          <div class="rack-head">
-            <div class="rack-title">手牌</div>
-          </div>
-          <div class="rack-list" id="rack"></div>
-        </section>
-
-        <section class="payout-panel" id="payoutPanel" hidden>
-          <button class="cashout-button" id="cashoutButton" type="button">提现：$0</button>
-          <div class="payout-card">
-            <div class="payout-row target">
-              <span>至少得分</span>
-              <strong id="payoutTarget">0</strong>
-              <em id="payoutRating">$$$$$</em>
-            </div>
-            <div class="payout-divider"></div>
-            <div class="payout-row">
-              <span id="payoutBlindText">盲注奖励</span>
-              <strong id="payoutBlindReward">$0</strong>
-            </div>
-            <div class="payout-row">
-              <span id="payoutHandsText">剩余出牌次数</span>
-              <strong id="payoutHandsReward">$0</strong>
-            </div>
-            <div class="payout-row">
-              <span id="payoutInterestText">利息</span>
-              <strong id="payoutInterestReward">$0</strong>
-            </div>
-          </div>
-        </section>
-
+        <div class="joker-count">5 / 5</div>
       </section>
 
-      <aside class="right">
-        <section class="panel deck-panel">
-          <button class="deck-stack" id="deckButton" type="button" aria-label="牌组">
-            <span class="deck-card-back"></span>
-            <strong id="deckCount">0 / 52</strong>
-          </button>
-        </section>
+      <section class="table-zone">
+        <div class="table-aura"></div>
+        <div class="played-cards"></div>
+      </section>
 
-        <section class="action-stack">
-          <button class="pull hand-play" id="pullButton" type="button">出 牌<span>提交手牌</span></button>
-          <button class="small-button hand-discard" id="refreshButton" type="button">弃 牌<span>放弃当前手牌</span></button>
-        </section>
+      <section class="hand-zone" aria-label="底部手牌区">
+        <div class="hand-fan">
+          <article class="playing-card hand-card black c1">
+            <div class="corner top">A<span>♠</span></div>
+            <div class="ace-mark">♠</div>
+            <div class="corner bottom">A<span>♠</span></div>
+          </article>
+          <article class="playing-card hand-card red c2">
+            <div class="corner top">Q<span>♥</span></div>
+            <div class="royal-figure queen">♕</div>
+            <div class="corner bottom">Q<span>♥</span></div>
+          </article>
+          <article class="playing-card hand-card black c3">
+            <div class="corner top">J<span>♣</span></div>
+            <div class="royal-figure jack">♜</div>
+            <div class="corner bottom">J<span>♣</span></div>
+          </article>
+          <article class="playing-card hand-card red c4">
+            <div class="corner top">10<span>♦</span></div>
+            <div class="pip-grid ten"><span>♦</span><span>♦</span><span>♦</span><span>♦</span><span>♦</span><span>♦</span><span>♦</span><span>♦</span><span>♦</span><span>♦</span></div>
+            <div class="corner bottom">10<span>♦</span></div>
+          </article>
+          <article class="playing-card hand-card red c5">
+            <div class="corner top">9<span>♦</span></div>
+            <div class="pip-grid nine"><span>♦</span><span>♦</span><span>♦</span><span>♦</span><span>♦</span><span>♦</span><span>♦</span><span>♦</span><span>♦</span></div>
+            <div class="corner bottom">9<span>♦</span></div>
+          </article>
+          <article class="playing-card hand-card black c6">
+            <div class="corner top">8<span>♠</span></div>
+            <div class="pip-grid eight"><span>♠</span><span>♠</span><span>♠</span><span>♠</span><span>♠</span><span>♠</span><span>♠</span><span>♠</span></div>
+            <div class="corner bottom">8<span>♠</span></div>
+          </article>
+          <article class="playing-card hand-card selected red c7">
+            <div class="corner top">2<span>♥</span></div>
+            <div class="pip-grid two"><span>♥</span><span>♥</span></div>
+            <div class="corner bottom">2<span>♥</span></div>
+          </article>
+          <article class="playing-card hand-card black c8">
+            <div class="corner top">7<span>♠</span></div>
+            <div class="pip-grid seven"><span>♠</span><span>♠</span><span>♠</span><span>♠</span><span>♠</span><span>♠</span><span>♠</span></div>
+            <div class="corner bottom">7<span>♠</span></div>
+          </article>
+        </div>
+        <div class="hand-count">8 / 8</div>
+      </section>
 
-        <section class="panel preview compact-hidden">
-          <div class="preview-head">
-            <div class="preview-title">牌型预览</div>
-          </div>
-          <div class="preview-grid">
-            <div class="preview-row">
-              <span>牌型基础分</span>
-              <strong id="previewProfit">0</strong>
+      <aside class="right-panel">
+        <section class="deck-area">
+          <div class="coin-pile" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div class="dice" aria-hidden="true"><b>⚂</b><b>⚃</b></div>
+          <div class="deck-stack" aria-label="牌堆剩余 32 张">
+            <div class="deck-card back-one"></div>
+            <div class="deck-card back-two"></div>
+            <div class="deck-card back-three">
+              <span class="skull">☠</span>
             </div>
-            <div class="preview-row">
-              <span>牌型倍率</span>
-              <strong id="previewPressure">x1.00</strong>
-            </div>
-            <div class="preview-row">
-              <span>当前牌型</span>
-              <strong id="previewRisk">未知</strong>
-            </div>
           </div>
+          <div class="deck-count">剩余 32 张</div>
         </section>
 
-        <section class="panel hand-reference compact-hidden" aria-label="牌型说明">
-          <div class="preview-title">牌型说明</div>
-          <div class="hand-table" id="handTable">
-            <div><strong>高牌</strong><span>5 x1</span></div>
-            <div><strong>对子</strong><span>10 x2</span></div>
-            <div><strong>两对</strong><span>20 x2</span></div>
-            <div><strong>三条</strong><span>30 x3</span></div>
-            <div><strong>顺子</strong><span>30 x4</span></div>
-            <div><strong>同花</strong><span>35 x4</span></div>
-            <div><strong>葫芦</strong><span>40 x4</span></div>
-            <div><strong>四条</strong><span>60 x7</span></div>
-            <div><strong>同花顺</strong><span>100 x8</span></div>
-          </div>
+        <section class="action-panel">
+          <button class="showdown-button" type="button">摊牌</button>
+          <button class="discard-button" type="button">换牌</button>
         </section>
 
-        <section class="panel shop-panel" id="shopPanel" aria-label="商店">
-          <div class="shop-sign">
-            <span>SHOP</span>
-            <strong>来变强吧！</strong>
-          </div>
-          <div class="shop-table">
-            <aside class="shop-controls">
-              <button class="shop-next" id="nextBlindButton" type="button">下一回合</button>
-              <button class="shop-reroll" id="shopRerollButton" type="button">重掷 $2</button>
-            </aside>
-            <section class="shop-board">
-              <div class="shop-owned" id="ownedJokers">已拥有：无</div>
-              <div class="shop-list" id="shopList"></div>
-            </section>
-          </div>
+        <section class="red-eye-entry">
+          <div class="lock-chain" aria-hidden="true"></div>
+          <div class="closed-eye" aria-hidden="true"></div>
+          <h2>红眼赌注</h2>
+          <strong>未开启</strong>
+          <span class="lock-symbol">▣</span>
+          <button class="red-eye-status-icon" type="button" aria-label="查看红眼赌注">◉</button>
+          <div class="red-eye-tooltip" role="tooltip">尚未选择红眼赌注。</div>
         </section>
       </aside>
-    </section>
-    <div id="buildVersion" style="position:fixed;right:10px;bottom:8px;font:12px monospace;opacity:.75;z-index:99"></div>
-  </main>
 
-  <div class="overlay" id="overlay" role="dialog" aria-modal="true">
-    <div class="modal">
-      <h2 id="modalTitle">红温爆表</h2>
-      <p id="modalBody">压力越过红线，资金化成了灰。</p>
-      <div class="modal-actions">
-        <button class="modal-button" id="restartButton" type="button">重新开机</button>
-        <button class="modal-button" id="continueButton" type="button">继续查看</button>
-      </div>
-    </div>
+      <section class="red-eye-modal" aria-hidden="true">
+        <div class="red-eye-modal-card">
+          <h2>红眼赌注</h2>
+          <p>上头值已进入红眼区，只能选择其中一项。</p>
+          <div class="red-eye-options">
+            <button type="button" data-bet="replay">
+              再押一手
+              <span>最后一张牌重复触发一次<br>上头值 +10</span>
+            </button>
+            <button type="button" data-bet="allIn">
+              梭哈
+              <span>本手倍率 +2<br>上头值 +15</span>
+            </button>
+            <button type="button" data-bet="borrow">
+              借鬼钱
+              <span>本手筹码 +20<br>上头值 +15</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
   </div>
 
-  <div class="resource-overlay" id="resourceOverlay" role="dialog" aria-modal="true" hidden>
-    <div class="resource-modal">
-      <div class="resource-head">
-        <strong>比赛资源</strong>
-        <button class="icon-button" id="resourceCloseButton" type="button" title="关闭">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6 6l12 12"></path>
-            <path d="M18 6 6 18"></path>
-          </svg>
-        </button>
-      </div>
-      <div class="resource-body" id="resourceBody"></div>
-    </div>
-  </div>
-
-  <div class="toast" id="toast"></div>
-
-    <script src="./logic-pure.js?v=coreloop-12"></script>
-  <script src="./app.js?v=coreloop-12"></script>
+  <script src="./logic-pure.js"></script>
+  <script src="./app.js?v=abyss-static-1"></script>
 </body>
 </html>
