@@ -1,23 +1,29 @@
-# Joker-like MVP Demo
+# 深渊赌局 MVP Demo
 
-一个可运行的“小丑牌-like”最小演示：
+这是一个可运行的黑暗扑克肉鸽 Web 原型。
 
+当前目标不是完整商业版本，而是验证核心体验：
 
-## 运行
+> 玩家明知道再贪一手可能爆牌，但还是想继续摊牌。
 
-```bash
-PYTHONPATH=src python -m jokermvp --seed 42
+## 网页原型
+
+可玩入口：
+
+```text
+web/index.html
 ```
 
-## Web MVP
-
-可玩入口文件：`web/index.html`。
-
-本地快速打开：
+本地快速运行：
 
 ```bash
 python -m http.server 8000
-# 然后访问 http://localhost:8000/web/
+```
+
+然后访问：
+
+```text
+http://localhost:8000/web/
 ```
 
 可复现调试：
@@ -26,14 +32,31 @@ python -m http.server 8000
 http://localhost:8000/web/?seed=balance-42
 ```
 
-发布为 GitHub Pages 的步骤见：`.github_pages.md`。
+## 当前核心内容
 
-## 设计文档
+- 固定 `1600 x 900` 游戏画布，整体等比缩放。
+- 标准 52 张牌组，点数为 `2-10 / J / Q / K / A`。
+- 8 张手牌，最多选择 5 张摊牌。
+- 真实抽牌堆和弃牌堆。
+- 基础扑克牌型识别。
+- 目标分数、摊牌次数、换牌次数。
+- 上头值、红眼区、红眼赌注。
+- 达标进入下一轮，下一轮上头值减少 `30`。
+- 上头值达到 `100` 立即爆牌失败。
+- 摊牌次数耗尽且未达标时，庄家通吃失败。
 
-当前有效设计文档统一收敛到 `docs/`：
+## 有效设计文档
+
+当前有效设计文档统一放在 `docs/`：
 
 - `docs/ui_spec.md`：主界面布局、固定画布、五区结构和受保护信息顺序。
 - `docs/component_rules.md`：基础牌、牌型、赌鬼、上头值、红眼赌注、商店与 UI 修改规则。
 - `docs/design_tokens.md`：颜色、材质、强度、字体和资源约束。
 - `docs/decision_log.md`：核心设计决策、术语切换和当前 MVP 状态。
 - `docs/changelog.md`：开发记录、UI 调整和后续建议。
+
+## 语言约定
+
+除非另有特殊说明，后续文档、说明和面向用户的回复默认使用中文。
+
+代码标识符、命令、文件名、API 名称和必要的英文专有名词可以保留英文。

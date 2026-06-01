@@ -503,6 +503,7 @@
     redEyeOffered = false;
     closeRedEyeModal();
     redEyeEntry.classList.remove("has-choice");
+    redEyeEntry.classList.remove("round-failed");
     redEyeStateText.textContent = "未开启";
     redEyeIcon.textContent = "◉";
     redEyeTooltip.textContent = "尚未选择红眼赌注。";
@@ -514,11 +515,16 @@
     if (currentTilt >= redEyeThreshold) openRedEyeModal();
   }
 
-  function failRound() {
+  function failRound(reason = "dealer") {
     failed = true;
-    console.log("本局失败。");
-    redEyeTooltip.textContent = "本局失败，刷新页面重开";
-    redEyeEntry.title = "本局失败，刷新页面重开";
+    const message = reason === "tilt"
+      ? "爆牌：上头值达到 100，本局失败。"
+      : "庄家通吃：摊牌次数耗尽且分数未达标。";
+    console.log(message);
+    redEyeTooltip.textContent = `${message} 刷新页面重开。`;
+    redEyeEntry.title = `${message} 刷新页面重开。`;
+    redEyeStateText.textContent = reason === "tilt" ? "已爆牌" : "庄家通吃";
+    redEyeEntry.classList.add("round-failed");
     updateActionButtons();
   }
 
@@ -610,6 +616,7 @@
     currentTargetScore = targetScores[roundIndex] ?? Math.round(currentTargetScore * 2.1);
     discardPile.push(...hand.filter(Boolean));
     resetRedEyeForNextRound();
+    redEyeEntry.classList.remove("round-failed");
     updateTilt(currentTilt - tiltReliefOnClear);
     currentScore = 0;
     scoreValue.textContent = "0";
@@ -659,6 +666,7 @@
     currentScore = nextScore;
     showdownsLeft = Math.max(0, showdownsLeft - 1);
     updateTilt(result.pressure);
+    const burstByTilt = currentTilt >= 100;
     pulseElement(tiltSection, "tilt-pulse");
     if (result.pressure >= redEyeThreshold) pulseElement(redEyeEntry, "red-eye-waking");
     if (redEyeBetIsActive()) {
@@ -672,10 +680,12 @@
     await wait(240);
     clearPlayedCardsAfterScore();
     await wait(280);
-    if (clearsTarget) {
+    if (burstByTilt) {
+      failRound("tilt");
+    } else if (clearsTarget) {
       advanceRound();
     } else if (showdownsLeft <= 0) {
-      failRound();
+      failRound("dealer");
     } else {
       triggerRedEyeIfNeeded();
     }

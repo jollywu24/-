@@ -1,290 +1,124 @@
-\# AGENTS.md
+# AGENTS.md
 
+## 项目身份
 
+本项目是一个纯 Web HTML/CSS/JS 原型，游戏名为《深渊赌局》，方向是黑暗扑克肉鸽。
 
-\## Project identity
+当前 UI 方向固定为：
 
+- 黑暗赌桌
+- 扑克牌
+- 赌鬼
+- 上头值
+- 红眼赌注
+- 左侧信息栏
+- 顶部赌鬼区
+- 中央出牌区
+- 底部手牌区
+- 右侧操作区
 
+除非用户明确要求，否则不要重做核心概念。
 
-This project is a pure Web HTML/CSS/JS prototype for a dark poker roguelike game named 《深渊赌局》.
+## 语言约定
 
+后续所有文档、说明、注释、提交总结和面向用户的回复，默认使用中文。
 
+除非用户明确要求英文或其他语言，否则不要再新增英文文档或英文说明。
 
-The current UI direction is fixed:
+保留代码标识符、文件名、命令、API 名称和必要的英文专有名词。
 
+## 核心设计原则
 
+这不是响应式网站。
 
-\- 黑暗赌桌
+这是固定游戏 UI 画布。
 
-\- 扑克牌
+使用固定 16:9 画布：
 
-\- 赌鬼
+- 基准尺寸：`1600 x 900`
+- 整个画布根据视口等比缩放
+- 不允许单个面板独立重排
 
-\- 上头值
+## 硬规则
 
-\- 红眼赌注
+除非明确要求，否则不要修改以下内容：
 
-\- 左侧信息栏
+1. 不移动左侧信息栏。
+2. 不改变左侧信息栏的信息顺序。
+3. 不在主游玩界面增加常驻商店 UI。
+4. 不常驻显示红眼赌注选项。
+5. 红眼赌注选项只能在触发时以中央弹窗出现。
+6. 选择红眼赌注后，右侧只显示小图标，详情通过 tooltip 展示。
+7. 不新增常驻面板。
+8. 不重新引入拉杆/老虎机工业界面。
+9. 不重命名核心术语：
+   - 赌鬼
+   - 上头值
+   - 红眼
+   - 鬼压桌
+   - 红眼赌注
+   - 摊牌
+   - 换牌
+10. 除非明确要求，否则不重新引入“插件、模块、压力、红温”等工业模块术语。
 
-\- 顶部赌鬼区
+## 视觉规则
 
-\- 中央出牌区
+UI 应该黑暗、可读、克制。
 
-\- 底部手牌区
+使用：
 
-\- 右侧操作区
+- 黑暗赌桌背景
+- 旧纸牌
+- 暗金边框
+- 暗红高亮
+- 红眼母题
+- 只在选中或激活状态使用轻微发光
 
+避免：
 
+- 过量霓虹
+- 赛博朋克 HUD
+- 彩色噪点
+- 常驻粒子效果
+- 过亮的赌鬼卡
+- 同一信息在多处重复展示
 
-Do not redesign the core concept unless explicitly asked.
+## UI 修改流程
 
+当用户要求修改 UI：
 
+1. 先确认要修改的是哪个现有组件。
+2. 只修改该组件。
+3. 保持无关布局、文字和视觉层级不变。
+4. 不顺手“优化”无关区域。
+5. 如果指令模糊，移动主要布局块之前先问。
+6. 完成后说明改了什么，以及哪些受保护组件保持不变。
 
-\## Critical design principle
+## 实现规则
 
+使用：
 
+- 原生 HTML
+- 原生 CSS
+- 原生 JavaScript
 
-This is not a responsive website.
+优先使用 DOM 元素，方便检查和修改卡牌、按钮、tooltip、弹窗。
 
-This is a fixed game UI canvas.
+## 验证清单
 
+完成任何 UI 任务前，检查：
 
+- 左侧信息顺序不变
+- 没有重复展示分数/牌型信息
+- 手牌区和出牌区视觉上区分清楚
+- 红眼赌注未触发时隐藏选项
+- 红眼赌注锁定入口的视觉权重低于“摊牌/换牌”
+- 赌鬼卡不抢中央游玩区的视觉焦点
+- 当前选中牌清晰可见
+- 布局仍然完整适配 `1600 x 900`，没有滚动
 
-Use a fixed 16:9 canvas:
+## 文档更新纪律
 
-\- Base size: 1600 × 900
+除非明确要求，不新增文档文件。
 
-\- Scale the whole canvas to fit viewport
-
-\- Do not let individual panels reflow independently
-
-
-
-\## Hard rules
-
-
-
-Never change these unless explicitly requested:
-
-
-
-1\. Do not move the left information panel.
-
-2\. Do not change the order of items in the left information panel.
-
-3\. Do not add a permanent shop UI to the main play screen.
-
-4\. Do not show the Red Eye Bet choices permanently.
-
-5\. The Red Eye Bet choices must appear as a center modal only when triggered.
-
-6\. After selecting a Red Eye Bet, show only a small status icon; details appear via tooltip.
-
-7\. Do not add new always-visible panels.
-
-8\. Do not reintroduce the lever/pull-machine UI.
-
-9\. Do not rename the core terms:
-
-&#x20;  - 赌鬼
-
-&#x20;  - 上头值
-
-&#x20;  - 红眼
-
-&#x20;  - 鬼压桌
-
-&#x20;  - 红眼赌注
-
-&#x20;  - 摊牌
-
-&#x20;  - 换牌
-
-10\. Do not introduce industrial module terminology such as 插件、模块、压力、红温 unless explicitly asked.
-
-
-
-\## Visual rules
-
-
-
-The UI should be dark, readable, and restrained.
-
-
-
-Use:
-
-\- dark table background
-
-\- worn paper cards
-
-\- dark gold borders
-
-\- muted red highlights
-
-\- red eye motif
-
-\- subtle glow only for selected or active states
-
-
-
-Avoid:
-
-\- excessive neon
-
-\- cyberpunk HUD style
-
-\- colorful noise
-
-\- always-on particle effects
-
-\- overly bright Joker/Ghost cards
-
-\- repeated information in multiple places
-
-
-
-\## UI workflow
-
-
-
-When asked to modify UI:
-
-
-
-1\. First identify which existing component is being changed.
-
-2\. Modify only that component.
-
-3\. Keep all unrelated layout, text, and visual hierarchy unchanged.
-
-4\. Do not “improve” unrelated areas.
-
-5\. If the instruction is ambiguous, ask before moving major layout blocks.
-
-6\. After implementation, summarize exactly what changed and what was intentionally left untouched.
-
-
-
-\## Implementation rules
-
-
-
-Use:
-
-\- vanilla HTML
-
-\- vanilla CSS
-
-\- vanilla JavaScript
-
-
-
-Prefer DOM elements so cards, buttons, tooltips, and modals are easy to inspect and modify.
-
-
-
-\## Verification checklist
-
-
-
-Before finishing any UI task, check:
-
-
-
-\- Left panel order unchanged
-
-\- No duplicated score/hand information
-
-\- Hand area and played-card area are visually distinct
-
-\- Red Eye Bet is hidden unless triggered
-
-\- Red Eye Bet locked entry is less visually dominant than 摊牌 / 换牌
-
-\- Joker/Ghost cards do not overpower the play area
-
-\- Current selected card is visually clear
-
-\- Layout still fits within 1600 × 900 without scrolling
-
-
-
-\## Documentation update discipline
-
-
-
-Do not create new documentation files unless explicitly requested.
-
-
-
-Only these documentation files may be edited:
-
-
-
-\- docs/ui\_spec.md
-
-\- docs/component\_rules.md
-
-\- docs/design\_tokens.md
-
-\- docs/decision\_log.md
-
-\- docs/changelog.md
-
-
-
-Do not create files such as:
-
-\- \*\_notes.md
-
-\- \*\_summary.md
-
-\- \*\_final.md
-
-\- \*\_v2.md
-
-\- implementation\_notes.md
-
-\- update\_report.md
-
-
-
-For small visual tweaks, do not update documentation.
-
-
-
-Update docs only when one of these changes occurs:
-
-
-
-1\. A stable UI layout rule changes.
-
-2\. A component contract changes.
-
-3\. A core term changes.
-
-4\. A gameplay state definition changes.
-
-5\. A design decision should be remembered for future tasks.
-
-
-
-When updating documentation:
-
-
-
-\- Prefer editing existing sections.
-
-\- Do not duplicate information across files.
-
-\- Keep changes short.
-
-\- Add at most one entry to docs/changelog.md.
-
-\- Add to docs/decision\_log.md only for real design decisions, not routine implementation changes.
-
-
-
-After finishing a task, summarize changes in the chat response instead of creating a new markdown report.
-
+有效文档集中维护在 `docs/` 下。

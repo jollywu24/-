@@ -1,138 +1,150 @@
-# Decision Log
+# 决策记录
 
-## Current Product Direction
+## 当前产品方向
 
-The project is now framed as `深渊赌局`: a dark poker roguelike about gambling pressure, ghost modifiers, and the temptation to keep pushing danger.
+项目现在定义为《深渊赌局》：一款黑暗扑克肉鸽，核心围绕赌博压力、赌鬼修正和继续贪下去的诱惑。
 
-The current hook:
+当前核心钩子：
 
-> The player knows one more greedy play may ruin the run, but still wants to press `摊牌`.
+> 玩家明知道再贪一手可能会毁掉赌局，但还是想按下 `摊牌`。
 
-The project should not drift into a large industrial world, story-heavy roguelite, or map-based adventure before the core gambling loop is proven.
+在核心赌博循环被验证之前，项目不应漂移成大型工业世界、重剧情 roguelite 或地图冒险。
 
-## Main Differentiation
+## 主要差异化
 
-The project should not compete with Balatro only on combinatorial card math.
+项目不只和 Balatro 拼组合数学爽感。
 
-The desired emotional niche is:
+目标情绪生态位是：
 
-- Risk management.
-- Greed.
-- Collapse edge.
-- Self-inflicted regret.
-- Dangerous payout chasing.
+- 风险管理
+- 贪婪
+- 崩盘边缘
+- 自己作死后的后悔
+- 危险收益追逐
 
-The current UI language expresses this through:
+当前 UI 通过以下语言表达：
 
 - `上头值`
 - `红眼`
 - `鬼压桌`
 - `红眼赌注`
-- Dark gambling-table presentation.
+- 黑暗赌桌表现
 
-## Fixed Canvas Decision
+## 固定画布决策
 
-The main UI is a fixed game board:
+主 UI 是固定游戏桌：
 
-- `1600 x 900` base size.
-- Whole-board proportional scaling.
-- No independent responsive panel reflow.
+- 基准尺寸 `1600 x 900`
+- 整体等比缩放
+- 不做单个面板独立响应式重排
 
-Reason: the screen is a composed game table, not a web page.
+原因：这个界面是被构图过的游戏桌，不是网页。
 
-## Main-Screen Scope Decision
+## 主界面范围决策
 
-The main screen keeps only five persistent regions:
+主界面只保留五个常驻区域：
 
-- Left information panel.
-- Top ghost area.
-- Center played-card area.
-- Bottom hand area.
-- Right action area.
+- 左侧信息栏
+- 顶部赌鬼区
+- 中央出牌区
+- 底部手牌区
+- 右侧操作区
 
-Permanent shop, log, extra popups, and duplicated score panels are excluded from the main play screen.
+常驻商店、日志、额外弹窗和重复分数面板都不放在主游玩界面。
 
-## Terminology Decision
+## 术语决策
 
-The current visual direction uses gambling terms:
+当前视觉方向使用赌博术语：
 
-- `赌鬼`, not Joker in visible UI.
-- `上头值`, not pressure in visible UI.
-- `摊牌`, not pull/lever.
-- `换牌`, not refresh.
-- `红眼赌注`, not overload module.
+- `赌鬼`，玩家可见 UI 不叫 Joker。
+- `上头值`，玩家可见 UI 不叫压力。
+- `摊牌`，不叫拉杆或 Pull。
+- `换牌`，不叫刷新。
+- `红眼赌注`，不叫过载模块。
 
-Legacy industrial terms can remain in historical code or internal logic, but should not dominate the player-facing UI unless intentionally reintroduced.
+历史代码或内部逻辑中可以保留旧工业术语，但除非有意重新引入，否则不要主导玩家可见 UI。
 
-## Poker Foundation Decision
+## 扑克基础决策
 
-Basic cards use a standard poker foundation:
+基础牌使用标准扑克基础：
 
-- 52-card deck.
-- 4 suits.
-- 13 ranks from 2 through A.
-- Draw pile and discard pile.
+- 52 张牌
+- 4 个花色
+- 13 个点数，从 2 到 A
+- 抽牌堆和弃牌堆
 
-Reason: poker hands give an intuitive mathematical anchor. The player can understand pair, two pair, straight, flush, and full house without learning a custom symbol system.
+原因：扑克牌型提供直觉数学锚点。玩家无需学习自定义符号系统，就能理解对子、两对、顺子、同花和葫芦。
 
-## Complexity Layering Decision
+## 复杂度分层决策
 
-Complexity is layered:
+复杂度分层如下：
 
-1. Basic cards are plain inputs.
-2. Poker hands provide base chips and multiplier.
-3. Ghost/Joker modifiers bend rules.
-4. Shop, packs, hand upgrades, and boss blinds add long-term decisions.
-5. Red Eye systems create dangerous short-term temptation.
+1. 基础牌是简单输入。
+2. 扑克牌型提供基础筹码和倍率。
+3. 赌鬼/Joker 修正规则。
+4. 商店、卡包、牌型升级和 Boss 盲注提供长期决策。
+5. 红眼系统提供短期危险诱惑。
 
-Basic cards should stay simple so rule-breaking cards feel special.
+基础牌必须保持简单，这样破坏规则的卡才会显得特殊。
 
-## Red Eye And Tilt Decision
+## 红眼与上头值决策
 
-The key validation is whether players voluntarily chase danger.
+关键验证目标是玩家是否会主动追逐危险。
 
-`上头值` should not be a decorative meter. It should affect payout, risk, and player emotion. The best moments should feel like:
+`上头值` 不能只是装饰性仪表。它要影响收益、风险和玩家情绪。理想瞬间应该像：
 
-- "I can pass safely, but this risky play pays more."
-- "I know this might collapse."
-- "That loss was my fault."
+- “我可以安全过，但这手更贪。”
+- “我知道这可能要崩。”
+- “这把输是我自己的问题。”
 
-Round persistence rule:
+跨轮规则：
 
-- `上头值` is a cross-round pressure resource.
-- Clearing a target relieves `30` `上头值`.
-- `红眼赌注` choices are not cross-round buffs; they reset when the next round starts.
-- Red Eye Bet costs stay meaningful because their stated `上头值` increase is added to the persistent `上头值` pool.
-- The next round starts with the `红眼赌注` entry locked again, so the player must re-enter danger before choosing another bet.
+- `上头值` 是跨轮压力资源。
+- 达成目标后，`上头值` 减少 `30`。
+- `红眼赌注` 选择不是跨轮增益，进入下一轮时重置。
+- 红眼赌注的代价之所以重要，是因为它写明的 `上头值` 增加会进入持久的 `上头值` 池。
+- 下一轮开始时，`红眼赌注` 入口重新锁定，玩家必须再次进入危险状态才会获得新选择。
 
-## Shop Visibility Decision
+结果优先级：
 
-The shop exists between blind states, not as a permanent main-screen region.
+1. `上头值 >= 100` 立即爆牌，当前赌局失败。
+2. 如果没有爆牌且分数达到目标，进入下一轮。
+3. 如果摊牌次数耗尽且分数仍低于目标，庄家通吃，当前赌局失败。
 
-Reason: the main screen must stay focused on the hand, score, tilt, deck, and action buttons. Shop decisions are important but should not compete with the core table during play.
+## 商店可见性决策
 
-## Current MVP Status
+商店存在于盲注之间，不作为主界面常驻区域。
 
-Implemented systems include:
+原因：主界面必须专注于手牌、分数、上头值、牌堆和操作按钮。商店决策重要，但不应和核心牌桌抢注意力。
 
-- 52-card deck.
-- Draw pile and discard pile.
-- Standard poker hand recognition.
-- Blind score targets.
-- Limited showdowns and discards.
-- Small blind, big blind, and boss blind.
-- Boss negative rules.
-- Shop purchase, refresh, and sell.
-- Hand upgrades.
-- Card packs.
-- Cashout/payout after clearing a blind.
-- Seeded random sequence through `?seed=`.
+## 当前 MVP 状态
 
-## Next Design Priority
+当前已经实现或已有底层支持的系统包括：
 
-Highest priority remains proving the emotional loop:
+- 52 张标准牌组。
+- 抽牌堆和弃牌堆。
+- 标准扑克牌型识别。
+- 目标分数。
+- 有限摊牌次数和换牌次数。
+- 牌型等级缩放的底层函数。
+- 赌鬼/Joker 修正的底层接口。
+- Boss 负面规则的底层接口。
+- 红眼赌注的当前 UI 闭环。
+- 通过 `?seed=` 复现随机序列。
 
-1. The player understands the hand quickly.
-2. The player sees a safe option and a greedy option.
-3. The player voluntarily chooses danger.
-4. The player regrets overreaching but wants another run.
+当前 UI 尚未完整接入的方向包括：
+
+- 商店购买、刷新、出售。
+- 牌型升级界面。
+- 卡包。
+- Boss 盲注界面与规则展示。
+- 过关后的经济结算/提现步骤。
+
+## 下一步设计优先级
+
+最高优先级仍然是验证情绪循环：
+
+1. 玩家能快速理解当前手牌。
+2. 玩家能看到安全选择和贪婪选择。
+3. 玩家会主动选择危险。
+4. 玩家过度贪婪后会后悔，但想立刻再开一局。

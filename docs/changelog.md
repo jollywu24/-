@@ -1,55 +1,54 @@
-# Changelog
+# 更新记录
 
 ## 2026-05-30
 
-### Current State
+### 当前状态
 
-- Web MVP moved from an early slot/module prototype toward a poker-hand prototype.
-- Basic cards now use a true 52-card deck with ranks `2-10 / J / Q / K / A`.
-- Draw pile and discard pile behavior are implemented.
-- Standard poker hand recognition is implemented.
-- Shop purchase, refresh, sell, hand upgrades, card packs, and boss blind negative rules are implemented.
-- Initial run no longer starts with free Joker-style modifiers.
-- Red/tilt-focused modifiers enter through the shop.
-- Clearing a blind enters a payout/cashout step before the shop.
-- Payout includes blind reward, remaining showdown reward, and interest.
-- Selection and committed played cards were separated: selecting a hand card does not immediately copy it into the played-card area.
-- Seeded randomness can be reproduced with `?seed=`.
-- Round-clear behavior now preserves `上头值`, relieves `30` on clear, resets the selected `红眼赌注`, and keeps Red Eye Bet costs through the persistent `上头值` total.
+- 网页 MVP 已从早期插槽/模块原型转向扑克牌型原型。
+- 基础牌使用真正的 52 张牌组，点数为 `2-10 / J / Q / K / A`。
+- 已实现抽牌堆和弃牌堆。
+- 已实现标准扑克牌型识别。
+- 当前 UI 已接入选牌、摊牌、换牌、目标分数、摊牌次数和上头值。
+- 底层逻辑已支持赌鬼/Joker 修正、牌型升级和 Boss 负面规则，但当前主 UI 尚未完整接入商店、卡包、Boss 流程。
+- 初始局不再免费携带 Joker 风格修正。
+- 选中牌与已提交出牌分离：选中手牌不会立刻复制到出牌区。
+- 可以通过 `?seed=` 复现随机序列。
+- 过关行为会保留 `上头值`，过关后减少 `30`，重置已选择的 `红眼赌注`，并保留红眼赌注代价已经造成的上头值。
+- 失败优先级为：`上头值 >= 100` 立即爆牌，优先于胜利；摊牌次数耗尽且未达标时触发 `庄家通吃`。
 
-### UI Changes
+### UI 变化
 
-- Main screen was refocused into five persistent areas:
-  - Left information panel.
-  - Top ghost area.
-  - Center played-card area.
-  - Bottom hand area.
-  - Right action area.
-- Left HUD was redesigned around target score, current score, current hand, chips x multiplier, money/stake, tilt value, and remaining actions.
-- The current visual direction became dark gambling table, worn poker cards, ghost cards, red eye, and locked Red Eye Bet.
-- Permanent shop, log, and extra panels were removed from the main play screen.
-- Main UI canvas uses fixed `1600 x 900` proportional scaling.
-- A pure DOM/CSS static mock was created for the current effect-image target without external images, external fonts, frameworks, or Canvas.
+- 主界面重新聚焦为五个常驻区域：
+  - 左侧信息栏
+  - 顶部赌鬼区
+  - 中央出牌区
+  - 底部手牌区
+  - 右侧操作区
+- 左侧 HUD 围绕目标分数、当前分数、当前牌型、筹码 × 倍率、赌资/筹码、上头值和剩余操作重新设计。
+- 当前视觉方向变为黑暗赌桌、旧纸牌、赌鬼卡、红眼和锁定的红眼赌注。
+- 主游玩界面移除了常驻商店、日志和额外面板。
+- 主 UI 画布使用固定 `1600 x 900` 等比缩放。
+- 当前效果图目标使用纯 DOM/CSS 制作，不使用外部图片、外部字体、框架或画布渲染。
 
-### Design Lessons
+### 设计经验
 
-- UI information must serve the core loop: can the player pass, how many actions remain, how dangerous the tilt is, and how much money can be spent later.
-- Preview and resolution should stay separated. Preview helps decision-making; resolution should reveal card scoring, modifier triggers, and risk step by step.
-- Selected hand cards and committed played cards must not be visually mixed.
-- Basic cards must remain plain. Complexity belongs to ghost modifiers, boss rules, shop, packs, and Red Eye Bet.
-- Static ghost cards should not be brighter than the active played-card area.
-- When matching a reference image, information structure and screen proportions matter more than individual border decoration.
+- UI 信息必须服务核心循环：玩家能否过关、还剩几次操作、上头值有多危险、之后有多少经济空间。
+- 预览和结算要分离。预览帮助玩家决策；结算应该逐步揭示牌型、单牌得分、修正触发和风险变化。
+- 选中的手牌和已提交的出牌不能视觉混在一起。
+- 基础牌必须保持简单。复杂度属于赌鬼修正、Boss 规则、商店、卡包和红眼赌注。
+- 静态赌鬼卡不应比主动出牌区域更亮。
+- 还原参考图时，信息结构和屏幕比例比单个边框装饰更重要。
 
-### Verification Habits
+### 验证习惯
 
-- Syntax check: `node --check web/app.js`.
-- Logic tests: `node --test web/tests/logic-pure.test.mjs`.
-- Diff hygiene: `git diff --check`.
-- Fixed seeds should be used for balance and UI regression checks.
+- 语法检查：`node --check web/app.js`。
+- 逻辑测试：`node --test web/tests/logic-pure.test.mjs`。
+- Diff 空白检查：`git diff --check`。
+- 使用固定 seed 做平衡和 UI 回归检查。
 
-### Next Suggested Work
+### 下一步建议
 
-1. Use several fixed seeds to test whether players naturally chase high `上头值`.
-2. Strengthen the feedback at `80`, `90`, `95`, and failure thresholds.
-3. Add DOM-level regression checks for shop, payout, selection, and played-card separation.
-4. Calibrate target curve, tilt gain, tilt relief, and ghost modifier strength.
+1. 用多个固定 seed 测试玩家是否会自然追逐高 `上头值`。
+2. 强化 `80`、`90`、`95` 和失败阈值的反馈。
+3. 增加 DOM 级回归检查，覆盖选择、换牌、摊牌、过关、爆牌失败和红眼赌注。
+4. 校准目标曲线、上头值增长、过关减压和赌鬼修正强度。

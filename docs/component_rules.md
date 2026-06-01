@@ -1,8 +1,8 @@
-# Component Rules
+# 组件规则
 
-## Core Terms
+## 核心术语
 
-Use these current terms consistently:
+当前界面统一使用以下术语：
 
 - `赌鬼`
 - `上头值`
@@ -12,184 +12,197 @@ Use these current terms consistently:
 - `摊牌`
 - `换牌`
 
-Avoid legacy industrial terms such as `模块`, `插件`, `压力`, and `红温` in the current gambling-table UI unless explicitly requested.
+除非用户明确要求，否则当前赌桌 UI 不使用旧工业术语，例如 `模块`、`插件`、`压力`、`红温`。
 
-## Resource Model
+## 资源模型
 
-All systems should map back to a small set of resources:
+所有系统应尽量回到少量核心资源：
 
-1. Chips: base score added by poker hands, basic cards, and some ghost effects.
-2. Multiplier: score leverage applied after chips.
-3. Tilt value: risk pressure, shown as `上头值`.
-4. Money: long-term shop resource, shown as `赌资` or cash depending on context.
+1. 筹码：由牌型、基础牌和部分赌鬼效果提供的基础分。
+2. 倍率：作用在筹码之后的分数杠杆。
+3. 上头值：风险压力，玩家可见名称为 `上头值`。
+4. 赌资：长期商店资源，根据语境显示为 `赌资` 或现金。
 
-Do not introduce new permanent resources without a clear reason.
+没有明确设计收益时，不新增永久资源。
 
-## Basic Playing Cards
+## 基础扑克牌
 
-Basic cards are simple poker cards.
+基础牌就是简单扑克牌。
 
-Each card displays:
+每张牌显示：
 
-- Rank.
-- Suit.
-- Worn paper background.
+- 点数
+- 花色
+- 旧纸牌底纹
 
-Current rank range:
+当前点数范围：
 
 ```text
 2 / 3 / 4 / 5 / 6 / 7 / 8 / 9 / 10 / J / Q / K / A
 ```
 
-Current suits:
+当前花色：
 
 ```text
 ♠ / ♥ / ♦ / ♣
 ```
 
-Basic cards should not contain long effect text, random effects, defensive skills, or special red-eye effects. Complexity belongs to ghost cards, shop choices, boss rules, and Red Eye Bet.
+基础牌不放长效果文字、随机效果、防御技能或特殊红眼效果。复杂度属于赌鬼卡、商店选择、Boss 规则和红眼赌注。
 
-## Poker Hand System
+## 牌型系统
 
-Current hand table:
+当前牌型表：
 
-| Hand | Condition | Chips | Mult |
+| 牌型 | 条件 | 筹码 | 倍率 |
 | --- | --- | ---: | ---: |
-| High Card | Any other played hand | 5 | x1 |
-| Pair | 2 cards of the same rank | 10 | x2 |
-| Two Pair | 2 separate pairs | 20 | x2 |
-| Three of a Kind | 3 cards of the same rank | 30 | x3 |
-| Straight | 5 consecutive ranks | 30 | x4 |
-| Flush | 5 cards of the same suit | 35 | x4 |
-| Full House | Three of a Kind + Pair | 40 | x4 |
-| Four of a Kind | 4 cards of the same rank | 60 | x7 |
-| Straight Flush | Straight + Flush | 100 | x8 |
+| 高牌 | 不满足其他牌型 | 5 | x1 |
+| 对子 | 2 张同点数 | 10 | x2 |
+| 两对 | 2 组对子 | 20 | x2 |
+| 三条 | 3 张同点数 | 30 | x3 |
+| 顺子 | 5 张连续点数 | 30 | x4 |
+| 同花 | 5 张同花色 | 35 | x4 |
+| 葫芦 | 三条 + 对子 | 40 | x4 |
+| 四条 | 4 张同点数 | 60 | x7 |
+| 同花顺 | 同时满足顺子和同花 | 100 | x8 |
 
-Scoring order:
+结算顺序：
 
-1. Identify best poker hand.
-2. Add hand chips.
-3. Apply hand multiplier.
-4. Resolve played cards.
-5. Apply ghost, boss, and red-eye modifiers.
-6. Final score is rounded after chips and multiplier are combined.
+1. 识别最佳牌型。
+2. 增加牌型筹码。
+3. 应用牌型倍率。
+4. 结算已出的基础牌。
+5. 应用赌鬼、Boss、红眼赌注等修正。
+6. 筹码和倍率合并后四舍五入得到最终分数。
 
-## Deck And Run Structure
+## 牌堆与单局结构
 
-- Use a true 52-card deck.
-- Use draw pile and discard pile behavior, not random replacement from a template pool.
-- Hand size is 8.
-- A play can commit up to 5 cards.
-- Current blind structure uses small blind, big blind, and boss blind.
-- Boss blinds can add negative rules.
+- 使用真正的 52 张牌组。
+- 使用抽牌堆和弃牌堆，不从模板池随机替换。
+- 手牌数量为 8。
+- 每次摊牌最多提交 5 张牌。
+- 当前盲注结构保留小盲注、大盲注、Boss 盲注方向。
+- Boss 盲注可以增加负面规则。
 
-## Ghost Cards
+## 胜负规则
 
-Ghost cards replace Joker cards in the current UI language.
+失败条件：
 
-They represent long-term rule modifiers and should show:
+- 如果 `上头值` 达到 `100`，立即爆牌，当前赌局失败。
+- 如果摊牌次数耗尽且当前分数仍低于目标，庄家通吃，当前赌局失败。
 
-- Name.
-- Dark portrait or icon.
-- Short effect.
-- Small rarity or stars.
+胜利条件：
 
-Card text must stay short. Detailed rules should live in tooltip, modal, or documentation.
+- 如果当前分数大于或等于目标，进入下一轮。
+- 下一轮 `上头值 = max(0, 当前上头值 - 30)`。
+- 已选择的 `红眼赌注` 不保留到下一轮。
 
-## Tilt Value
+## 赌鬼卡
 
-`上头值` replaces the older pressure presentation.
+赌鬼卡是当前 UI 语言里的 Joker。
 
-Stages:
+它们代表长期规则修正，应显示：
+
+- 名字
+- 暗黑人物或图标
+- 短效果
+- 小型稀有度或星级
+
+卡面文字必须短。详细规则放在 tooltip、弹窗或文档里。
+
+## 上头值
+
+`上头值` 替代旧的压力表现。
+
+阶段：
 
 - `冷手`
 - `热手`
 - `红眼`
 - `鬼压桌`
 
-It should be represented by an eye gauge:
+表现形式为眼睛仪表：
 
-- Cold: closed or dim.
-- Warm: half-open.
-- Red Eye: red and open.
-- Ghost Pressing Table: intense and unstable.
+- 冷手：闭合或黯淡
+- 热手：半睁
+- 红眼：红色睁开
+- 鬼压桌：强烈且不稳定
 
-High `上头值` is the project’s core risk emotion: the player should want the danger because the payout looks tempting.
+高 `上头值` 是项目的核心风险情绪：玩家应该因为收益诱惑而主动想接近危险。
 
-## Red Eye Bet
+## 红眼赌注
 
-Red Eye Bet is a temporary dangerous choice.
+红眼赌注是临时危险选择。
 
-Default state:
+默认状态：
 
-- Locked entry on the right side.
-- No options visible.
-- Lower visual weight than the `摊牌` button.
+- 右侧入口锁定。
+- 不显示选项。
+- 视觉权重低于 `摊牌` 按钮。
 
-Triggered state:
+触发状态：
 
-- Center modal.
-- Dimmed background.
-- 3 options.
-- One-time choice affecting current hand or next hand.
+- 中央弹窗。
+- 背景压暗。
+- 3 个选项。
+- 只能选择 1 项，影响当前手牌或下一手牌。
 
-After choosing:
+选择后：
 
-- Modal disappears.
-- A small icon appears near the right action area.
-- Tooltip shows details.
+- 弹窗消失。
+- 右侧操作区出现小图标。
+- tooltip 显示详情。
 
-Round persistence:
+跨轮规则：
 
-- `上头值` carries across rounds.
-- Clearing the current target reduces `上头值` by `30`, but never below `0`.
-- The selected `红眼赌注` itself does not carry into the next round.
-- Any special cost written on the Red Eye Bet card, such as `上头值 +10` or `上头值 +15`, is already part of `上头值` and therefore carries across rounds unless later reduced by round-clear relief or another rule.
-- At the start of the next round, the right-side `红眼赌注` entry returns to locked state and can be offered again later.
+- `上头值` 跨轮保留。
+- 达成当前目标后，`上头值` 减少 `30`，但不低于 `0`。
+- 选择的 `红眼赌注` 本身不跨轮。
+- 红眼赌注卡面写明的特殊代价，例如 `上头值 +10` 或 `上头值 +15`，已经进入 `上头值`，因此会随 `上头值` 跨轮保留，除非之后被过关减压或其他规则抵消。
+- 下一轮开始时，右侧 `红眼赌注` 入口回到锁定状态，之后可再次触发。
 
-## Shop And Economy
+## 商店与经济
 
-The shop is not a permanent main-screen panel.
+商店不是主界面的常驻面板。
 
-Current shop features:
+当前商店方向：
 
-- Buy ghost/Joker-style modifiers.
-- Refresh shop.
-- Sell owned modifiers.
-- Buy hand upgrades.
-- Open card packs.
+- 购买赌鬼/Joker 风格修正。
+- 刷新商店。
+- 出售已拥有修正。
+- 购买牌型升级。
+- 打开卡包。
 
-Economy sources:
+经济来源：
 
-- Blind reward.
-- Remaining showdown count reward.
-- Interest.
-- Special modifier rewards.
+- 盲注奖励。
+- 剩余摊牌次数奖励。
+- 利息。
+- 特殊修正奖励。
 
-## UI Modification Workflow
+## UI 修改流程
 
-When modifying UI:
+修改 UI 时：
 
-1. Identify the target component.
-2. Modify only that component.
-3. Keep unrelated layout, text, and hierarchy unchanged.
-4. Do not improve unrelated areas opportunistically.
-5. If a request is ambiguous, ask before moving major layout blocks.
-6. Report changed files, changed components, and protected components left untouched.
+1. 识别目标组件。
+2. 只修改该组件。
+3. 保持无关布局、文字和层级不变。
+4. 不借机重构无关区域。
+5. 如果请求模糊，移动主要布局块之前先问。
+6. 汇报修改文件、修改组件，以及哪些受保护组件保持不变。
 
-Allowed edit types:
+允许的编辑类型：
 
-- Layout edit: move or resize only the named component.
-- Visual edit: change color, border, glow, shadow, texture, or emphasis only for the named component.
-- Interaction edit: add behavior to the named component without redesigning unrelated UI.
-- Copy edit: change only specified text labels.
+- 布局编辑：只移动或调整指定组件尺寸。
+- 视觉编辑：只改变指定组件的颜色、边框、发光、阴影、材质或强调。
+- 交互编辑：给指定组件加行为，不重做无关 UI。
+- 文案编辑：只改指定文字。
 
-## Verification Checklist
+## 验证清单
 
-Before finishing UI work, check:
+完成 UI 工作前检查：
 
-- Left panel order is unchanged.
-- No duplicated score or hand information appears in the center.
-- Hand area and played-card area are visually distinct.
-- Hand fan does not overlap the right action panel.
-- No permanent shop/log/extra panel was added to the main screen.
+- 左侧信息顺序不变。
+- 中央区域没有重复分数或牌型信息。
+- 手牌区和出牌区视觉上区分清楚。
+- 手牌扇形不压到右侧操作区。
+- 主界面没有新增常驻商店、日志或额外面板。

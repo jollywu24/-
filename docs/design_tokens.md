@@ -1,39 +1,39 @@
-# Design Tokens
+# 设计令牌
 
-## Color Tokens
+## 颜色令牌
 
-Background:
+背景：
 
 - `main-bg`: `#080604`
 - `table-bg`: `#10100b`
 - `panel-bg`: `#14100b`
 - `panel-bg-deep`: `#090705`
 
-Borders:
+边框：
 
 - `gold-border`: `#7a5524`
 - `muted-gold`: `#b98538`
 - `dark-gold`: `#4a3318`
 
-Text:
+文字：
 
 - `text-main`: `#ead8b0`
 - `text-muted`: `#9f8a64`
 - `text-dim`: `#665742`
 
-Score:
+分数：
 
 - `chips-blue`: `#4aa3ff`
 - `mult-red`: `#ff4545`
 - `money-gold`: `#e0ad45`
 
-Danger:
+危险：
 
 - `red-eye`: `#b71919`
 - `deep-red`: `#4a0909`
 - `warning-orange`: `#d56a24`
 
-Card:
+卡牌：
 
 - `paper`: `#d6c6a5`
 - `paper-dark`: `#a58f68`
@@ -41,69 +41,69 @@ Card:
 - `red-suit`: `#7b2016`
 - `black-suit`: `#080705`
 
-## Visual Direction
+## 视觉方向
 
-The current UI direction is:
+当前 UI 方向：
 
-- Dark gambling table.
-- Worn poker cards.
-- Dark gold borders.
-- Muted red highlights.
-- Red-eye motif.
-- Restrained glow.
-- Dirty, old, dangerous materials rather than clean neon.
+- 黑暗赌桌
+- 旧纸牌
+- 暗金边框
+- 暗红高亮
+- 红眼母题
+- 克制发光
+- 脏、旧、危险的材质，而不是干净霓虹
 
-Avoid:
+避免：
 
-- Cyberpunk HUD style.
-- Bright rainbow effects.
-- Colorful noise.
-- Always-on particles.
-- Overly bright ghost cards.
-- Repeated information in multiple places.
+- 赛博朋克 HUD 风格
+- 明亮彩虹效果
+- 彩色噪点
+- 常驻粒子
+- 过亮的赌鬼卡
+- 多处重复展示同一信息
 
-## Intensity Rules
+## 强度规则
 
-Default UI should be dark and calm.
+默认 UI 应该黑暗、冷静。
 
-Strong glow is reserved for:
+强发光只留给：
 
-- Selected hand card.
-- Currently scoring card.
-- Red Eye state.
-- Active Red Eye Bet modal.
-- Triggered ghost card.
+- 选中的手牌
+- 当前正在结算的牌
+- 红眼状态
+- 激活的红眼赌注弹窗
+- 已触发的赌鬼卡
 
-Do not use strong glow on static ghost cards, inactive locked entries, or background decoration.
+不要给静态赌鬼卡、未激活锁定入口或背景装饰使用强发光。
 
-## Typography
+## 字体
 
-- Use available system fonts only.
-- Serif-style Chinese display type is acceptable for title and button labels.
-- Keep button and card text short.
-- Do not use external fonts.
+- 只使用系统可用字体。
+- 标题和按钮可以使用偏衬线感的中文显示字体。
+- 按钮和卡牌文字保持短。
+- 不使用外部字体。
 
-## Shape And Layout
+## 形状与布局
 
-- Primary canvas is `1600 x 900`.
-- Cards should have worn paper texture from CSS gradients only.
-- Main panels use dark frames with subtle gold borders.
-- Cards, buttons, and locked entries can use clipped corners.
-- Avoid large rounded SaaS-style cards.
+- 主画布为 `1600 x 900`。
+- 卡牌旧纸质感只用 CSS 渐变制作。
+- 主面板使用黑暗框架和微弱暗金边框。
+- 卡牌、按钮和锁定入口可以使用切角。
+- 避免大圆角 SaaS 风格卡片。
 
-## Asset Constraints
+## 资源约束
 
-Current UI spec forbids:
+当前 UI 规格禁止：
 
-- External images.
-- External fonts.
-- Canvas rendering.
-- External frameworks.
+- 外部图片
+- 外部字体
+- 画布渲染
+- 外部框架
 
-Allowed tools:
+允许：
 
-- DOM.
-- CSS gradients.
-- CSS shadows.
-- CSS pseudo-elements.
-- Unicode suit symbols.
+- DOM
+- CSS 渐变
+- CSS 阴影
+- CSS 伪元素
+- Unicode 花色符号

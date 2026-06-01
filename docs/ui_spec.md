@@ -1,54 +1,54 @@
-# UI Spec
+# UI 规格
 
-## Canvas
+## 画布
 
-- Base canvas: `1600 x 900`.
-- The whole game board is centered and scaled proportionally to fit the browser viewport.
-- The page does not scroll.
-- This is a fixed game UI canvas, not a responsive website layout. Individual panels should not reflow independently.
+- 基准画布：`1600 x 900`。
+- 整个游戏画布居中，并根据浏览器视口等比缩放。
+- 页面不滚动。
+- 这是固定游戏 UI 画布，不是响应式网页布局。单个面板不应独立重排。
 
-## Main Screen Layout
+## 主界面布局
 
-The main play screen has exactly five persistent regions:
+主游玩界面只有五个常驻区域：
 
-1. Left information panel.
-2. Top ghost area.
-3. Center played-card area.
-4. Bottom hand area.
-5. Right action area.
+1. 左侧信息栏。
+2. 顶部赌鬼区。
+3. 中央出牌区。
+4. 底部手牌区。
+5. 右侧操作区。
 
-Do not add always-visible shop, log, popup, map, or extra side panels to the main play screen.
+不要在主游玩界面增加常驻商店、日志、弹窗、地图或额外侧栏。
 
-## Left Information Panel
+## 左侧信息栏
 
-Purpose: show all critical run information in a fixed order.
+用途：按固定顺序展示所有关键局内信息。
 
-Required order:
+必须保持以下顺序：
 
-1. Game title: `深渊赌局`.
-2. Button: `比赛信息`.
-3. Target score: `目标分数`.
-4. Current score: `当前分数`.
-5. Current hand type: `当前牌型`.
-6. Hand level: `等级`.
-7. Chips x multiplier: `筹码 × 倍率`.
-8. Stake: `赌资`.
-9. Tilt value: `上头值`.
-10. Tilt stages: `冷手`, `热手`, `红眼`, `鬼压桌`.
-11. Showdown count: `摊牌`.
-12. Discard count: `换牌`.
+1. 游戏标题：`深渊赌局`。
+2. 按钮：`比赛信息`。
+3. 目标分数：`目标分数`。
+4. 当前分数：`当前分数`。
+5. 当前牌型：`当前牌型`。
+6. 牌型等级：`等级`。
+7. 筹码 × 倍率：`筹码 × 倍率`。
+8. 赌资：`赌资`。
+9. 上头值：`上头值`。
+10. 上头值阶段：`冷手`、`热手`、`红眼`、`鬼压桌`。
+11. 摊牌次数：`摊牌`。
+12. 换牌次数：`换牌`。
 
-The left panel order is protected. Do not rearrange it during visual polish.
+左侧信息栏顺序受保护。视觉打磨时不要重排。
 
-## Top Ghost Area
+## 顶部赌鬼区
 
-- Title: `赌鬼`.
-- Shows 5 ghost cards.
-- Ghost cards represent long-term rule modifiers.
-- They should be visible but darker than the played-card area.
-- They should only become bright when triggered.
+- 标题：`赌鬼`。
+- 显示 5 张赌鬼卡。
+- 赌鬼卡代表长期规则修正。
+- 静态状态下应可见，但暗于中央出牌区。
+- 只有触发时才应该变亮。
 
-Current ghost card names:
+当前赌鬼卡名称：
 
 - `诡笑庄家`
 - `借命赌徒`
@@ -56,36 +56,36 @@ Current ghost card names:
 - `血债收账人`
 - `厄运撒票者`
 
-## Center Played-Card Area
+## 中央出牌区
 
-- Shows cards that have already been committed by `摊牌`.
-- Played cards are straighter and slightly brighter than hand cards.
-- Do not show hand name, formula, duplicate score text, or preview math in this area.
-- Selected hand cards must not appear here before showdown.
+- 只显示已经通过 `摊牌` 提交的牌。
+- 已出牌比手牌更端正，略微更亮。
+- 不在这里显示牌型名、公式、重复分数或预览数学。
+- 未摊牌前，选中的手牌不能出现在这里。
 
-## Bottom Hand Area
+## 底部手牌区
 
-- Shows 8 current hand cards in a fan.
-- The selected card rises slightly and uses a gold/orange highlight.
-- The hand counter displays `8 / 8`.
-- The fan must stay inside the center play area and must not overlap the right action panel.
+- 显示 8 张当前手牌，扇形排列。
+- 选中牌轻微上浮，并使用橙金色高亮。
+- 手牌计数显示 `8 / 8`。
+- 扇形必须留在中央游玩区域内，不能压到右侧操作区。
 
-## Right Action Area
+## 右侧操作区
 
-Required order:
+必须保持以下顺序：
 
-1. Deck pile.
-2. Remaining cards count.
-3. `摊牌` button.
-4. `换牌` button.
-5. Locked `红眼赌注` entry.
+1. 牌堆。
+2. 剩余牌数。
+3. `摊牌` 按钮。
+4. `换牌` 按钮。
+5. 锁定的 `红眼赌注` 入口。
 
-The `红眼赌注` entry is locked by default. It should look dangerous but inactive, and it must not visually overpower the `摊牌` button.
+`红眼赌注` 默认锁定。它应显得危险但未激活，视觉权重不能超过 `摊牌` 按钮。
 
-## Protected Main-Screen Rules
+## 主界面保护规则
 
-- Do not add a permanent shop UI to the main play screen.
-- Do not show Red Eye Bet choices permanently.
-- Red Eye Bet choices appear only as a center modal when triggered.
-- After choosing Red Eye Bet, show only a small status icon; details appear via tooltip.
-- Do not reintroduce the industrial lever or pull-machine UI unless explicitly requested.
+- 不在主游玩界面添加常驻商店 UI。
+- 不常驻显示红眼赌注选项。
+- 红眼赌注选项只在触发时作为中央弹窗出现。
+- 选择红眼赌注后，只显示小状态图标，详情通过 tooltip 展示。
+- 除非明确要求，不重新引入工业拉杆或老虎机界面。
