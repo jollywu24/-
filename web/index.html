@@ -199,20 +199,19 @@
       <section class="red-eye-modal" aria-hidden="true">
         <div class="red-eye-modal-card">
           <h2>红眼赌注</h2>
-          <p>上头值已进入红眼区，只能选择其中一项。</p>
-          <div class="red-eye-options">
-            <button type="button" data-bet="replay">
-              再押一手
-              <span>最后一张牌重复触发一次<br>上头值 +10</span>
-            </button>
-            <button type="button" data-bet="allIn">
-              梭哈
-              <span>本手倍率 +2<br>上头值 +15</span>
-            </button>
-            <button type="button" data-bet="borrow">
-              借鬼钱
-              <span>本手筹码 +20<br>上头值 +15</span>
-            </button>
+          <p>选择一项绑定下一次摊牌，也可以稍后再押。</p>
+          <div class="red-eye-options"></div>
+        </div>
+      </section>
+
+      <section class="failure-overlay" aria-hidden="true">
+        <div class="failure-card" role="dialog" aria-modal="true" aria-labelledby="failureTitle">
+          <p class="failure-kicker">当前赌局失败</p>
+          <h2 class="failure-title" id="failureTitle">爆牌</h2>
+          <p class="failure-subtitle">上头过度，满盘皆输。</p>
+          <dl class="failure-stats"></dl>
+          <div class="failure-actions">
+            <button class="failure-restart" type="button">再来一局</button>
           </div>
         </div>
       </section>
@@ -220,6 +219,6 @@
   </div>
 
   <script src="./logic-pure.js"></script>
-  <script src="./app.js?v=round-flow-4"></script>
+  <script src="./app.js?v=red-eye-bets-6-pick-3"></script>
 </body>
 </html>

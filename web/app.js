@@ -12,22 +12,43 @@
       id: "replay",
       name: "再押一手",
       icon: "♠",
-      pressure: 10,
-      text: "本手最后一张牌重复触发一次。上头值 +10。"
-    },
-    allIn: {
-      id: "allIn",
-      name: "梭哈",
-      icon: "●",
       pressure: 15,
-      text: "本手倍率 +2。上头值 +15。"
+      text: "本手所有已出牌重复触发 1 次。上头值 +15。"
+    },
+    redDouble: {
+      id: "redDouble",
+      name: "红眼翻倍",
+      icon: "●",
+      pressure: 20,
+      text: "本手倍率 ×2。上头值 +20。"
     },
     borrow: {
       id: "borrow",
       name: "借鬼钱",
       icon: "☠",
-      pressure: 15,
-      text: "本手筹码 +20。上头值 +15。"
+      pressure: 0,
+      text: "本手筹码 +100。下一轮起始上头值 +25。"
+    },
+    stealLine: {
+      id: "stealLine",
+      name: "偷过线",
+      icon: "◇",
+      pressure: 0,
+      text: "本手结算后，若分数达到目标 90%，直接视为达标。下一轮起始上头值 +30。"
+    },
+    flipDealer: {
+      id: "flipDealer",
+      name: "翻庄",
+      icon: "↟",
+      pressure: 0,
+      text: "若本手过关且上头值处于 95-99，当前赌资翻倍，最多额外获得 20。"
+    },
+    lifeDebt: {
+      id: "lifeDebt",
+      name: "欠命",
+      icon: "†",
+      pressure: 0,
+      text: "本手不会爆牌；若本应爆牌，上头值停在 99。若本手后成功过关，下一轮从 90 开始。"
     }
   };
   const phaseSuit = {
@@ -56,6 +77,7 @@
   let currentScore = 0;
   let currentTargetScore = 300;
   let currentTilt = 0;
+  let currentStake = 12;
   let roundIndex = 0;
   let settling = false;
   let rng;
@@ -65,11 +87,16 @@
   let showdownsLeft = showdownsMax;
   let discardsLeft = maxDiscards;
   let failed = false;
+  let phase = "playing";
+  let failureType = null;
   let selectedIds = new Set();
-  let redEyeOffered = false;
+  let redEyeUnlocked = false;
+  let redEyeUsedThisRound = false;
   let redEyeModalOpen = false;
   let activeRedEyeBet = null;
-  let redEyeBetConsumed = false;
+  let redEyeOfferIds = [];
+  let pendingNextRoundTiltBonus = 0;
+  let pendingNextRoundTiltOverride = null;
 
   const board = document.querySelector(".game-board");
   const handCards = [...document.querySelectorAll(".hand-card")];
@@ -86,16 +113,24 @@
   const multChip = document.querySelector(".score-chip.red");
   const chipsValue = chipsChip.querySelector("strong");
   const multValue = multChip.querySelector("strong");
+  const stakeValue = document.querySelector(".stake-row strong");
   const tiltSection = document.querySelector(".tilt-meter");
   const tiltValue = document.querySelector(".section-title strong");
   const meterHand = document.querySelector(".meter-hand");
   const deckCount = document.querySelector(".deck-count");
+  const jokerZone = document.querySelector(".joker-zone");
   const redEyeModal = document.querySelector(".red-eye-modal");
-  const redEyeOptions = [...document.querySelectorAll(".red-eye-options button")];
+  const redEyeOptionsPanel = document.querySelector(".red-eye-options");
   const redEyeEntry = document.querySelector(".red-eye-entry");
   const redEyeStateText = redEyeEntry.querySelector("strong");
   const redEyeIcon = document.querySelector(".red-eye-status-icon");
   const redEyeTooltip = document.querySelector(".red-eye-tooltip");
+  const failureOverlay = document.querySelector(".failure-overlay");
+  const failureCard = document.querySelector(".failure-card");
+  const failureTitle = document.querySelector(".failure-title");
+  const failureSubtitle = document.querySelector(".failure-subtitle");
+  const failureStats = document.querySelector(".failure-stats");
+  const failureRestart = document.querySelector(".failure-restart");
 
   function fitBoard() {
     const scale = Math.min(window.innerWidth / boardWidth, window.innerHeight / boardHeight);
@@ -158,6 +193,10 @@
     showdownsLeft = showdownsMax;
     discardsLeft = maxDiscards;
     failed = false;
+    phase = "playing";
+    failureType = null;
+    pendingNextRoundTiltBonus = 0;
+    pendingNextRoundTiltOverride = null;
     hand = drawCards(8);
   }
 
@@ -236,9 +275,14 @@
     updateActionButtons();
   }
 
+  function updateStake() {
+    stakeValue.textContent = String(Math.round(currentStake));
+  }
+
   function updateActionButtons() {
-    showdownButton.disabled = failed || settling || redEyeModalOpen || showdownsLeft <= 0;
-    discardButton.disabled = failed || settling || redEyeModalOpen || discardsLeft <= 0;
+    const locked = failed || phase === "failed" || settling || redEyeModalOpen;
+    showdownButton.disabled = locked || showdownsLeft <= 0;
+    discardButton.disabled = locked || discardsLeft <= 0;
   }
 
   function selectedHandNodes() {
@@ -314,7 +358,11 @@
   }
 
   function redEyeBetIsActive() {
-    return Boolean(activeRedEyeBet && !redEyeBetConsumed);
+    return Boolean(activeRedEyeBet);
+  }
+
+  function activeRedEyeBetId() {
+    return activeRedEyeBet ? activeRedEyeBet.id : "";
   }
 
   function applyRedEyeBet(result, cards) {
@@ -326,24 +374,22 @@
     };
 
     if (activeRedEyeBet.id === "replay") {
-      const lastCard = cards[cards.length - 1];
       const run = {
         base: modified.base,
         pressure: modified.pressure
       };
-      lastCard.preview(run);
+      cards.forEach((card) => card.preview(run));
       modified.base = run.base;
       modified.pressure = run.pressure + activeRedEyeBet.pressure;
     }
 
-    if (activeRedEyeBet.id === "allIn") {
-      modified.multiplier += 2;
+    if (activeRedEyeBet.id === "redDouble") {
+      modified.multiplier *= 2;
       modified.pressure += activeRedEyeBet.pressure;
     }
 
     if (activeRedEyeBet.id === "borrow") {
-      modified.base += 20;
-      modified.pressure += activeRedEyeBet.pressure;
+      modified.base += 100;
     }
 
     modified.profit = logic.currentRunProfit({
@@ -443,16 +489,17 @@
     }
 
     if (redEyeBetIsActive() && activeRedEyeBet.id === "replay" && cards.length) {
-      const node = playedNodes[playedNodes.length - 1];
-      const amount = cards[cards.length - 1].chips || 0;
-      if (node) {
+      for (let index = 0; index < cards.length; index += 1) {
+        const node = playedNodes[index];
+        const amount = cards[index].chips || 0;
+        if (!node) continue;
         node.classList.add("counting");
         chipPopup(node, amount);
+        await animateNumber(chipsValue, runningBase, runningBase + amount, 150);
+        runningBase += amount;
+        await wait(55);
+        node.classList.remove("counting");
       }
-      await animateNumber(chipsValue, runningBase, runningBase + amount, 180);
-      runningBase += amount;
-      await wait(80);
-      if (node) node.classList.remove("counting");
     }
 
     if (Math.round(runningBase) !== Math.round(finalResult.base)) {
@@ -467,10 +514,48 @@
     tiltSection.classList.toggle("red-eye-awake", currentTilt >= redEyeThreshold);
   }
 
+  function animateTilt(nextTilt, duration = 540) {
+    const startTilt = currentTilt;
+    const start = performance.now();
+    return new Promise((resolve) => {
+      function tick(now) {
+        const progress = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        updateTilt(startTilt + (nextTilt - startTilt) * eased);
+        if (progress < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          updateTilt(nextTilt);
+          resolve();
+        }
+      }
+      requestAnimationFrame(tick);
+    });
+  }
+
+  function pickRedEyeOfferIds() {
+    return shuffle(Object.keys(redEyeBets)).slice(0, 3);
+  }
+
+  function renderRedEyeOptions() {
+    if (!redEyeOfferIds.length) redEyeOfferIds = pickRedEyeOfferIds();
+    redEyeOptionsPanel.innerHTML = redEyeOfferIds
+      .map((id) => {
+        const bet = redEyeBets[id];
+        return `
+          <button type="button" data-bet="${bet.id}">
+            ${bet.name}
+            <span>${bet.text}</span>
+          </button>
+        `;
+      })
+      .join("");
+  }
+
   function openRedEyeModal() {
-    if (redEyeOffered || activeRedEyeBet) return;
-    redEyeOffered = true;
+    if (phase === "failed" || failed || !redEyeUnlocked || redEyeUsedThisRound || activeRedEyeBet) return;
     redEyeModalOpen = true;
+    renderRedEyeOptions();
     redEyeModal.classList.add("show");
     redEyeModal.setAttribute("aria-hidden", "false");
     updateActionButtons();
@@ -484,47 +569,217 @@
   }
 
   function redEyeTooltipText() {
-    if (!activeRedEyeBet) return "尚未选择红眼赌注。";
-    const stateText = redEyeBetConsumed ? "已生效" : "待生效";
-    return `${activeRedEyeBet.name}（${stateText}）：${activeRedEyeBet.text}`;
+    if (activeRedEyeBet) return `${activeRedEyeBet.name}（下一手生效）：${activeRedEyeBet.text}`;
+    if (redEyeUsedThisRound) return "本轮红眼赌注已使用。下一轮重新锁定。";
+    if (redEyeUnlocked) return "红眼赌注已解锁。点击入口选择下一手加注。";
+    return "尚未解锁红眼赌注。";
   }
 
   function showRedEyeStatus() {
+    redEyeUnlocked = false;
     redEyeEntry.classList.add("has-choice");
+    redEyeEntry.classList.remove("is-unlocked", "is-spent");
     redEyeStateText.textContent = activeRedEyeBet ? activeRedEyeBet.name : "已选择";
     redEyeIcon.textContent = activeRedEyeBet ? activeRedEyeBet.icon : "◉";
     redEyeTooltip.textContent = redEyeTooltipText();
     redEyeTooltip.classList.remove("show");
   }
 
+  function showRedEyeUnlocked() {
+    if (redEyeUnlocked || redEyeUsedThisRound || activeRedEyeBet) return;
+    redEyeUnlocked = true;
+    redEyeEntry.classList.add("is-unlocked");
+    redEyeEntry.classList.remove("has-choice", "is-spent");
+    redEyeStateText.textContent = "已解锁";
+    redEyeIcon.textContent = "◉";
+    redEyeTooltip.textContent = redEyeTooltipText();
+    redEyeTooltip.classList.remove("show");
+    pulseElement(redEyeEntry, "red-eye-waking");
+  }
+
+  function consumeActiveRedEyeBetAfterShowdown() {
+    if (!activeRedEyeBet) return;
+    activeRedEyeBet = null;
+    redEyeUsedThisRound = true;
+    redEyeUnlocked = false;
+    redEyeOfferIds = [];
+    redEyeOptionsPanel.innerHTML = "";
+    closeRedEyeModal();
+    redEyeEntry.classList.remove("has-choice", "is-unlocked");
+    redEyeEntry.classList.add("is-spent");
+    redEyeStateText.textContent = "已使用";
+    redEyeIcon.textContent = "◉";
+    redEyeTooltip.textContent = redEyeTooltipText();
+    redEyeTooltip.classList.remove("show");
+  }
+
+  function handleRedEyeEntryClick() {
+    if (failed || phase === "failed" || settling || redEyeModalOpen) return;
+    if (redEyeUnlocked && !redEyeUsedThisRound && !activeRedEyeBet) {
+      openRedEyeModal();
+      return;
+    }
+    redEyeTooltip.textContent = redEyeTooltipText();
+    redEyeTooltip.classList.toggle("show");
+  }
+
   function resetRedEyeForNextRound() {
     activeRedEyeBet = null;
-    redEyeBetConsumed = false;
-    redEyeOffered = false;
+    redEyeUnlocked = false;
+    redEyeUsedThisRound = false;
+    redEyeOfferIds = [];
+    redEyeOptionsPanel.innerHTML = "";
     closeRedEyeModal();
-    redEyeEntry.classList.remove("has-choice");
+    redEyeEntry.classList.remove("has-choice", "is-unlocked", "is-spent");
     redEyeEntry.classList.remove("round-failed");
     redEyeStateText.textContent = "未开启";
     redEyeIcon.textContent = "◉";
-    redEyeTooltip.textContent = "尚未选择红眼赌注。";
+    redEyeTooltip.textContent = redEyeTooltipText();
     redEyeTooltip.classList.remove("show");
     redEyeEntry.removeAttribute("title");
   }
 
-  function triggerRedEyeIfNeeded() {
-    if (currentTilt >= redEyeThreshold) openRedEyeModal();
+  function unlockRedEyeIfNeeded() {
+    if (phase !== "playing" || failed || currentTilt < redEyeThreshold) return;
+    if (activeRedEyeBet || redEyeUsedThisRound) return;
+    showRedEyeUnlocked();
   }
 
-  function failRound(reason = "dealer") {
+  function checkFailureAfterScoring(result, candidateScore = currentScore) {
+    const lifeDebtPreventsBust = activeRedEyeBetId() === "lifeDebt";
+    if (!lifeDebtPreventsBust && (result.pressure >= 100 || currentTilt >= 100)) {
+      return { type: "bustCard" };
+    }
+    if (showdownsLeft <= 0 && candidateScore < currentTargetScore) {
+      return { type: "houseTakes" };
+    }
+    return null;
+  }
+
+  function failureStat(label, value) {
+    return `<div><dt>${label}</dt><dd>${value}</dd></div>`;
+  }
+
+  function showFailureOverlay(type, payload) {
     failed = true;
-    const message = reason === "tilt"
-      ? "爆牌：上头值达到 100，本局失败。"
-      : "庄家通吃：摊牌次数耗尽且分数未达标。";
-    console.log(message);
-    redEyeTooltip.textContent = `${message} 刷新页面重开。`;
-    redEyeEntry.title = `${message} 刷新页面重开。`;
-    redEyeStateText.textContent = reason === "tilt" ? "已爆牌" : "庄家通吃";
+    phase = "failed";
+    failureType = type;
+    const isBust = type === "bustCard";
+    const title = isBust ? "爆牌" : "庄家通吃";
+    const subtitle = isBust ? "上头过度，满盘皆输。" : "底注未清，赌桌收走一切。";
+
+    failureTitle.textContent = title;
+    failureSubtitle.textContent = subtitle;
+    failureStats.innerHTML = isBust
+      ? [
+          failureStat("当前分数", formatNumber(payload.currentScore)),
+          failureStat("目标分数", formatNumber(payload.targetScore)),
+          failureStat("上头值", "100")
+        ].join("")
+      : [
+          failureStat("目标分数", formatNumber(payload.targetScore)),
+          failureStat("当前分数", formatNumber(payload.currentScore)),
+          failureStat("差额", formatNumber(payload.shortfall))
+        ].join("");
+
+    failureCard.classList.remove("failure-bust-card", "failure-house-takes");
+    failureCard.classList.add(isBust ? "failure-bust-card" : "failure-house-takes");
+    failureOverlay.classList.add("show");
+    failureOverlay.setAttribute("aria-hidden", "false");
+    redEyeTooltip.textContent = `${title}：${subtitle}`;
+    redEyeEntry.title = `${title}：${subtitle}`;
+    redEyeStateText.textContent = title;
+    redEyeEntry.classList.remove("has-choice", "is-unlocked", "is-spent");
     redEyeEntry.classList.add("round-failed");
+    updateActionButtons();
+  }
+
+  function canStealLineClear(score) {
+    return activeRedEyeBetId() === "stealLine"
+      && score >= currentTargetScore * 0.9
+      && score < currentTargetScore;
+  }
+
+  function applyRedEyeRoundCostOnClear({ stealLineClears, lifeDebtWouldBurst }) {
+    const betId = activeRedEyeBetId();
+    if (betId === "borrow") pendingNextRoundTiltBonus += 25;
+    if (stealLineClears) pendingNextRoundTiltBonus += 30;
+    if (betId === "lifeDebt" && lifeDebtWouldBurst) pendingNextRoundTiltOverride = 90;
+  }
+
+  function applyFlipDealerRewardIfNeeded(clearsTarget) {
+    if (activeRedEyeBetId() !== "flipDealer" || !clearsTarget) return;
+    if (currentTilt < 95 || currentTilt >= 100) return;
+    const gain = Math.min(currentStake, 20);
+    currentStake += gain;
+    updateStake();
+    pulseElement(document.querySelector(".stake-row"), "flash");
+  }
+
+  function hideFailureOverlay() {
+    failureOverlay.classList.remove("show");
+    failureOverlay.setAttribute("aria-hidden", "true");
+    failureCard.classList.remove("failure-bust-card", "failure-house-takes");
+  }
+
+  function clearFailureEffects() {
+    board.classList.remove("failure-bust-flash");
+    tiltSection.classList.remove("bust-surge");
+    playedCards.classList.remove("failure-bust-card", "failure-house-takes");
+    if (jokerZone) jokerZone.classList.remove("house-eye-flash");
+    redEyeEntry.classList.remove("round-failed");
+  }
+
+  async function animateBustCard() {
+    await wait(200);
+    pulseElement(tiltSection, "bust-surge");
+    pulseElement(board, "failure-bust-flash");
+    playedCards.classList.add("failure-bust-card");
+    await wait(420);
+  }
+
+  async function animateHouseTakes() {
+    await wait(300);
+    playedCards.classList.add("failure-house-takes");
+    if (jokerZone) pulseElement(jokerZone, "house-eye-flash");
+    await wait(520);
+  }
+
+  function resetDemoRun() {
+    currentScore = 0;
+    currentTargetScore = targetScores[0];
+    currentTilt = 0;
+    currentStake = 12;
+    roundIndex = 0;
+    settling = false;
+    failed = false;
+    phase = "playing";
+    failureType = null;
+    activeRedEyeBet = null;
+    redEyeUnlocked = false;
+    redEyeUsedThisRound = false;
+    redEyeModalOpen = false;
+    redEyeOfferIds = [];
+    redEyeOptionsPanel.innerHTML = "";
+    pendingNextRoundTiltBonus = 0;
+    pendingNextRoundTiltOverride = null;
+    selectedIds = new Set();
+    hideFailureOverlay();
+    clearFailureEffects();
+    closeRedEyeModal();
+    redEyeEntry.classList.remove("has-choice", "is-unlocked", "is-spent");
+    redEyeStateText.textContent = "未开启";
+    redEyeIcon.textContent = "◉";
+    redEyeTooltip.textContent = redEyeTooltipText();
+    redEyeTooltip.classList.remove("show");
+    redEyeEntry.removeAttribute("title");
+    scoreValue.textContent = "0";
+    updateStake();
+    updateTargetScore();
+    updateTilt(0);
+    playedCards.replaceChildren();
+    drawInitialHand();
+    renderHand();
     updateActionButtons();
   }
 
@@ -617,7 +872,11 @@
     discardPile.push(...hand.filter(Boolean));
     resetRedEyeForNextRound();
     redEyeEntry.classList.remove("round-failed");
-    updateTilt(currentTilt - tiltReliefOnClear);
+    const relievedTilt = Math.max(0, currentTilt - tiltReliefOnClear);
+    const nextTilt = pendingNextRoundTiltOverride ?? relievedTilt + pendingNextRoundTiltBonus;
+    pendingNextRoundTiltBonus = 0;
+    pendingNextRoundTiltOverride = null;
+    updateTilt(nextTilt);
     currentScore = 0;
     scoreValue.textContent = "0";
     updateTargetScore();
@@ -627,10 +886,11 @@
     failed = false;
     hand = drawCards(8);
     renderHand();
+    unlockRedEyeIfNeeded();
   }
 
   async function showdown() {
-    if (failed || settling || redEyeModalOpen || showdownsLeft <= 0) return;
+    if (failed || phase === "failed" || settling || redEyeModalOpen || showdownsLeft <= 0) return;
     const selectedNodes = selectedHandNodes();
     const cards = selectedCards();
     if (!cards.length) return;
@@ -661,40 +921,63 @@
     await wait(150);
 
     const nextScore = currentScore + result.profit;
-    const clearsTarget = nextScore >= currentTargetScore;
+    showdownsLeft = Math.max(0, showdownsLeft - 1);
+    const lifeDebtWouldBurst = activeRedEyeBetId() === "lifeDebt" && result.pressure >= 100;
+    const resolvedPressure = lifeDebtWouldBurst ? 99 : result.pressure;
+    await animateTilt(resolvedPressure);
+    pulseElement(tiltSection, "tilt-pulse");
+
+    const burstFailure = checkFailureAfterScoring(result);
+    updateCounts();
+    if (burstFailure?.type === "bustCard") {
+      await animateBustCard();
+      showFailureOverlay("bustCard", {
+        currentScore,
+        targetScore: currentTargetScore
+      });
+      settling = false;
+      updateActionButtons();
+      return;
+    }
+
     await animateNumber(scoreValue, currentScore, nextScore, 760);
     currentScore = nextScore;
-    showdownsLeft = Math.max(0, showdownsLeft - 1);
-    updateTilt(result.pressure);
-    const burstByTilt = currentTilt >= 100;
-    pulseElement(tiltSection, "tilt-pulse");
-    if (result.pressure >= redEyeThreshold) pulseElement(redEyeEntry, "red-eye-waking");
-    if (redEyeBetIsActive()) {
-      redEyeBetConsumed = true;
-      showRedEyeStatus();
-    }
+    const stealLineClears = canStealLineClear(currentScore);
+    const clearsTarget = currentScore >= currentTargetScore || stealLineClears;
 
     commitPlayedCards(selectedNodes, cards);
     updateCounts();
 
-    await wait(240);
-    clearPlayedCardsAfterScore();
-    await wait(280);
-    if (burstByTilt) {
-      failRound("tilt");
-    } else if (clearsTarget) {
+    if (clearsTarget) {
+      applyRedEyeRoundCostOnClear({ stealLineClears, lifeDebtWouldBurst });
+      applyFlipDealerRewardIfNeeded(clearsTarget);
+      await wait(240);
+      clearPlayedCardsAfterScore();
+      await wait(280);
       advanceRound();
-    } else if (showdownsLeft <= 0) {
-      failRound("dealer");
     } else {
-      triggerRedEyeIfNeeded();
+      const scoringFailure = checkFailureAfterScoring(result, currentScore);
+      if (scoringFailure?.type === "houseTakes") {
+        await animateHouseTakes();
+        showFailureOverlay("houseTakes", {
+          currentScore,
+          targetScore: currentTargetScore,
+          shortfall: currentTargetScore - currentScore
+        });
+      } else {
+        await wait(240);
+        clearPlayedCardsAfterScore();
+        await wait(280);
+        consumeActiveRedEyeBetAfterShowdown();
+        unlockRedEyeIfNeeded();
+      }
     }
     settling = false;
     updateActionButtons();
   }
 
   function discardSelectedCards() {
-    if (failed || settling || redEyeModalOpen || discardsLeft <= 0) return;
+    if (failed || phase === "failed" || settling || redEyeModalOpen || discardsLeft <= 0) return;
     const selectedNodes = selectedHandNodes();
     if (!selectedNodes.length) {
       discardButton.title = "先选择要换掉的手牌";
@@ -727,7 +1010,7 @@
   function bindEvents() {
     handCards.forEach((card) => {
       card.addEventListener("click", () => {
-        if (settling || redEyeModalOpen || card.classList.contains("played-out")) return;
+        if (failed || phase === "failed" || settling || redEyeModalOpen || card.classList.contains("played-out")) return;
         if (!card.classList.contains("selected")) {
           const selectedCount = selectedHandNodes().length;
           if (selectedCount >= 5) return;
@@ -744,22 +1027,36 @@
     showdownButton.addEventListener("click", showdown);
     discardButton.addEventListener("click", discardSelectedCards);
 
-    redEyeOptions.forEach((button) => {
-      button.addEventListener("click", () => {
-        if (activeRedEyeBet) return;
-        const bet = redEyeBets[button.dataset.bet];
-        if (!bet) return;
-        activeRedEyeBet = bet;
-        redEyeBetConsumed = false;
-        closeRedEyeModal();
-        showRedEyeStatus();
-        updatePreview();
-      });
+    redEyeOptionsPanel.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-bet]");
+      if (!button || !redEyeOptionsPanel.contains(button)) return;
+      if (failed || phase === "failed" || activeRedEyeBet || !redEyeUnlocked || redEyeUsedThisRound) return;
+      const bet = redEyeBets[button.dataset.bet];
+      if (!bet || !redEyeOfferIds.includes(bet.id)) return;
+      activeRedEyeBet = bet;
+      closeRedEyeModal();
+      showRedEyeStatus();
+      updatePreview();
+    });
+
+    redEyeEntry.addEventListener("click", (event) => {
+      if (event.target.closest(".red-eye-tooltip")) return;
+      handleRedEyeEntryClick();
+    });
+
+    redEyeModal.addEventListener("click", (event) => {
+      if (event.target === redEyeModal) closeRedEyeModal();
     });
 
     redEyeIcon.addEventListener("click", (event) => {
       event.stopPropagation();
-      redEyeTooltip.classList.toggle("show");
+      handleRedEyeEntryClick();
+    });
+
+    failureRestart.addEventListener("click", resetDemoRun);
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && redEyeModalOpen) closeRedEyeModal();
     });
 
     document.addEventListener("click", (event) => {
@@ -777,7 +1074,7 @@
     renderHand();
     updateTilt(currentTilt);
     bindEvents();
-    triggerRedEyeIfNeeded();
+    unlockRedEyeIfNeeded();
   }
 
   init();
