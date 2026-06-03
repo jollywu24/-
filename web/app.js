@@ -186,6 +186,25 @@
     };
   }
 
+  function sortHandCards(cards) {
+    const suitOrder = {
+      kinetic: 4,
+      pulse: 3,
+      thermal: 2,
+      toxic: 1
+    };
+
+    return [...cards].sort((a, b) => {
+      const rankDiff = (b?.rank || 0) - (a?.rank || 0);
+      if (rankDiff !== 0) return rankDiff;
+      return (suitOrder[b?.phase] || 0) - (suitOrder[a?.phase] || 0);
+    });
+  }
+
+  function sortHand() {
+    hand = sortHandCards(hand.filter(Boolean));
+  }
+
   function drawInitialHand() {
     rng = logic.createRng(initialSeed());
     deck = shuffle(logic.createStandardDeck()).map(createPlayableCard);
@@ -198,6 +217,7 @@
     pendingNextRoundTiltBonus = 0;
     pendingNextRoundTiltOverride = null;
     hand = drawCards(8);
+    sortHand();
   }
 
   function refillDeckFromDiscardIfNeeded(cardCount) {
@@ -248,12 +268,14 @@
     node.dataset.deckId = card.deckId;
     node.classList.remove("red", "black", "selected", "played-out");
     node.classList.add(phaseSuit[card.phase].color);
+    node.classList.toggle("selected", selectedIds.has(card.uid));
     node.innerHTML = cardFaceMarkup(card);
   }
 
   function renderHand() {
+    const currentIds = new Set(hand.filter(Boolean).map((card) => card.uid));
+    selectedIds = new Set([...selectedIds].filter((id) => currentIds.has(id)));
     handCards.forEach((_, index) => renderCardAt(index));
-    selectedIds = new Set();
     updatePreview();
     updateDeckCount();
     updateCounts();
@@ -301,6 +323,19 @@
       .filter((index) => index >= 0);
   }
 
+  function handNodesAtIndexes(indexes) {
+    return indexes.map((index) => handCards[index]).filter(Boolean);
+  }
+
+  function holdHandCardsForDeal(indexes) {
+    const targetNodes = handNodesAtIndexes(indexes);
+    targetNodes.forEach((node) => node.classList.add("deal-settle"));
+    if (targetNodes[0]) void targetNodes[0].offsetWidth;
+    targetNodes.forEach((node) => node.classList.add("played-out"));
+    if (targetNodes[0]) void targetNodes[0].offsetWidth;
+    return targetNodes;
+  }
+
   function refillHandAtIndexes(indexes) {
     const newCards = drawCards(indexes.length);
     indexes.forEach((handIndex, drawIndex) => {
@@ -311,6 +346,7 @@
       hand.push(...drawCards(8 - hand.length));
     }
     hand = hand.slice(0, 8);
+    sortHand();
   }
 
   function commitPlayedCards(selectedNodes, cards) {
@@ -355,6 +391,42 @@
       multiplier: leveled.mult,
       sequence: leveled
     };
+  }
+
+  function effectiveScoringCards(cards, sequence) {
+    if (!cards.length || !sequence) return [];
+    const limitedCards = cards.slice(0, 5);
+    if (["straight", "flush", "fullHouse", "straightFlush"].includes(sequence.id)) return limitedCards;
+
+    const rankCounts = new Map();
+    limitedCards.forEach((card) => rankCounts.set(card.rank, (rankCounts.get(card.rank) || 0) + 1));
+
+    if (sequence.id === "highCard") {
+      const highestRank = Math.max(...limitedCards.map((card) => card.rank));
+      return limitedCards.filter((card) => card.rank === highestRank).slice(0, 1);
+    }
+
+    if (sequence.id === "pair") {
+      const pairRank = [...rankCounts.entries()].find(([, count]) => count === 2)?.[0];
+      return limitedCards.filter((card) => card.rank === pairRank);
+    }
+
+    if (sequence.id === "twoPair") {
+      const pairRanks = new Set([...rankCounts.entries()].filter(([, count]) => count === 2).map(([rank]) => rank));
+      return limitedCards.filter((card) => pairRanks.has(card.rank));
+    }
+
+    if (sequence.id === "threeKind") {
+      const tripleRank = [...rankCounts.entries()].find(([, count]) => count === 3)?.[0];
+      return limitedCards.filter((card) => card.rank === tripleRank);
+    }
+
+    if (sequence.id === "fourKind") {
+      const quadRank = [...rankCounts.entries()].find(([, count]) => count === 4)?.[0];
+      return limitedCards.filter((card) => card.rank === quadRank);
+    }
+
+    return limitedCards;
   }
 
   function redEyeBetIsActive() {
@@ -415,6 +487,19 @@
     return clone;
   }
 
+  function makeFlyingDrawCard(cardNode) {
+    const clone = makePlayedCard(cardNode);
+    clone.classList.add("flying-card", "drawing-card", "card-back-flight");
+    const face = document.createElement("div");
+    face.className = "card-flight-face";
+    face.innerHTML = clone.innerHTML;
+    const back = document.createElement("div");
+    back.className = "card-flight-back";
+    back.innerHTML = '<span class="skull">☠</span>';
+    clone.replaceChildren(face, back);
+    return clone;
+  }
+
   function makeFlyingCard(cardNode, rect) {
     const clone = makePlayedCard(cardNode);
     clone.classList.add("flying-card");
@@ -465,11 +550,14 @@
   }
 
   function chipPopup(cardNode, amount) {
+    const rect = boardRect(cardNode.getBoundingClientRect());
     const popup = document.createElement("div");
     popup.className = "chip-popup";
     popup.textContent = `+${Math.round(amount)}`;
-    cardNode.appendChild(popup);
-    window.setTimeout(() => popup.remove(), 720);
+    popup.style.left = `${rect.left + rect.width / 2}px`;
+    popup.style.top = `${rect.top - 54}px`;
+    board.appendChild(popup);
+    window.setTimeout(() => popup.remove(), 960);
   }
 
   async function animateCardChipScoring(cards, finalResult, handPreview) {
@@ -477,7 +565,7 @@
     let runningBase = handPreview.base;
 
     for (let index = 0; index < cards.length; index += 1) {
-      const node = playedNodes[index];
+      const node = playedNodes.find((playedNode) => playedNode.dataset.uid === cards[index].uid);
       if (!node) continue;
       const amount = cards[index].chips || 0;
       node.classList.add("counting");
@@ -490,7 +578,7 @@
 
     if (redEyeBetIsActive() && activeRedEyeBet.id === "replay" && cards.length) {
       for (let index = 0; index < cards.length; index += 1) {
-        const node = playedNodes[index];
+        const node = playedNodes.find((playedNode) => playedNode.dataset.uid === cards[index].uid);
         const amount = cards[index].chips || 0;
         if (!node) continue;
         node.classList.add("counting");
@@ -745,7 +833,7 @@
     await wait(520);
   }
 
-  function resetDemoRun() {
+  async function resetDemoRun() {
     currentScore = 0;
     currentTargetScore = targetScores[0];
     currentTilt = 0;
@@ -779,23 +867,45 @@
     updateTilt(0);
     playedCards.replaceChildren();
     drawInitialHand();
-    renderHand();
+    await dealHandFromDeck();
     updateActionButtons();
   }
 
   function clearPlayedCardsAfterScore() {
-    if (!playedCards.children.length) return;
-    playedCards.classList.remove("scoring");
+    const playedNodes = [...playedCards.querySelectorAll(".playing-card")];
+    if (!playedNodes.length) return Promise.resolve();
+    const sourceRects = playedNodes.map((card) => boardRect(card.getBoundingClientRect()));
+    const flyingCards = playedNodes.map((card, index) => {
+      const clone = makeFlyingCard(card, sourceRects[index]);
+      clone.classList.add("played-clearing-card");
+      clone.style.zIndex = String(15 + index);
+      return clone;
+    });
+
     playedCards.classList.add("clearing");
-    window.setTimeout(() => {
-      playedCards.replaceChildren();
-      playedCards.classList.remove("clearing");
-    }, 260);
+    requestAnimationFrame(() => {
+      flyingCards.forEach((card, index) => {
+        const offset = index - (flyingCards.length - 1) / 2;
+        card.style.left = `${boardWidth + 140 + index * 42}px`;
+        card.style.top = `${sourceRects[index].top - 24 - Math.abs(offset) * 22}px`;
+        card.style.transform = `rotate(${28 + index * 7}deg) scale(0.82)`;
+        card.style.filter = "brightness(0.68) saturate(0.62)";
+        card.style.opacity = "0";
+      });
+    });
+
+    return new Promise((resolve) => {
+      window.setTimeout(() => {
+        flyingCards.forEach((card) => card.remove());
+        playedCards.replaceChildren();
+        playedCards.classList.remove("clearing");
+        resolve();
+      }, 460);
+    });
   }
 
   function animateDiscardedCards(selectedNodes) {
     const sourceRects = selectedNodes.map((card) => boardRect(card.getBoundingClientRect()));
-    const deckRect = boardRect(document.querySelector(".deck-stack").getBoundingClientRect());
     const flyingCards = selectedNodes.map((card, index) => {
       const clone = makeFlyingCard(card, sourceRects[index]);
       clone.classList.add("discarding-card");
@@ -807,29 +917,108 @@
     requestAnimationFrame(() => {
       flyingCards.forEach((card, index) => {
         const offset = index - (flyingCards.length - 1) / 2;
-        card.style.left = `${deckRect.left + 40 + offset * 9}px`;
-        card.style.top = `${deckRect.top + 36 + Math.abs(offset) * 5}px`;
-        card.style.width = "86px";
-        card.style.height = "126px";
-        card.style.transform = `rotate(${(index % 2 ? 1 : -1) * (22 + index * 8)}deg) scale(0.72)`;
-        card.style.filter = "brightness(0.82) saturate(0.72)";
+        card.style.left = `${boardWidth + 120 + index * 46}px`;
+        card.style.top = `${sourceRects[index].top - 42 - Math.abs(offset) * 28}px`;
+        card.style.width = "104px";
+        card.style.height = "154px";
+        card.style.transform = `rotate(${34 + index * 10}deg) scale(0.78)`;
+        card.style.filter = "brightness(0.62) saturate(0.58)";
+        card.style.opacity = "0";
       });
     });
 
-    window.setTimeout(() => flyingCards.forEach((card) => card.remove()), 420);
+    return new Promise((resolve) => {
+      window.setTimeout(() => {
+        flyingCards.forEach((card) => card.remove());
+        resolve();
+      }, 430);
+    });
   }
 
-  function markNewCardsEntering(indexes) {
-    indexes.forEach((index, order) => {
-      const node = handCards[index];
-      if (!node || !hand[index]) return;
-      node.classList.add("draw-in");
-      node.style.setProperty("--draw-delay", `${order * 42}ms`);
-      window.setTimeout(() => {
-        node.classList.remove("draw-in");
-        node.style.removeProperty("--draw-delay");
-      }, 520 + order * 42);
+  function animateDrawnCardsFromDeck(indexes) {
+    const deckRect = boardRect(document.querySelector(".deck-stack").getBoundingClientRect());
+    const sourceCenter = {
+      x: deckRect.left + deckRect.width / 2,
+      y: deckRect.top + deckRect.height / 2
+    };
+    const cardWidth = 124;
+    const cardHeight = 184;
+    const flyingCards = indexes
+      .map((index, order) => {
+        const targetNode = handCards[index];
+        if (!targetNode || !hand[index]) return null;
+        const targetParentRect = boardRect(targetNode.offsetParent.getBoundingClientRect());
+        const targetStyle = getComputedStyle(targetNode);
+        const targetBase = {
+          left: targetParentRect.left + targetNode.offsetLeft,
+          top: targetParentRect.top + targetNode.offsetTop
+        };
+        const clone = makeFlyingDrawCard(targetNode);
+        clone.style.zIndex = String(16 + order);
+        clone.style.left = `${sourceCenter.x - cardWidth / 2}px`;
+        clone.style.top = `${sourceCenter.y - cardHeight / 2}px`;
+        clone.style.width = `${cardWidth}px`;
+        clone.style.height = `${cardHeight}px`;
+        clone.style.transformOrigin = targetStyle.transformOrigin;
+        clone.style.transform = `rotate(${-8 + order * 4}deg) scale(0.66)`;
+        clone.style.filter = "brightness(0.88) saturate(0.78)";
+        clone.style.transitionDelay = `${order * 58}ms`;
+        board.appendChild(clone);
+        return { clone, targetBase, targetTransform: targetStyle.transform };
+      })
+      .filter(Boolean);
+
+    requestAnimationFrame(() => {
+      flyingCards.forEach(({ clone, targetBase, targetTransform }) => {
+        clone.style.left = `${targetBase.left}px`;
+        clone.style.top = `${targetBase.top}px`;
+        clone.style.transform = targetTransform;
+        clone.style.filter = "brightness(0.88) saturate(0.78)";
+      });
     });
+
+    const duration = 940 + Math.max(0, flyingCards.length - 1) * 58;
+    flyingCards.forEach(({ clone }, order) => {
+      window.setTimeout(() => clone.classList.add("is-face-up"), 360 + order * 58);
+    });
+    return new Promise((resolve) => {
+      window.setTimeout(() => {
+        flyingCards.forEach(({ clone, targetBase, targetTransform }) => {
+          clone.style.transition = "none";
+          clone.style.transitionDelay = "0ms";
+          clone.style.left = `${targetBase.left}px`;
+          clone.style.top = `${targetBase.top}px`;
+          clone.style.transform = targetTransform;
+        });
+        if (flyingCards[0]) void flyingCards[0].clone.offsetWidth;
+        const targetNodes = handNodesAtIndexes(indexes);
+        targetNodes.forEach((node) => node.classList.add("deal-settle"));
+        if (targetNodes[0]) void targetNodes[0].offsetWidth;
+        targetNodes.forEach((node) => node.classList.remove("played-out"));
+        if (targetNodes[0]) void targetNodes[0].offsetWidth;
+        requestAnimationFrame(() => {
+          flyingCards.forEach(({ clone }) => clone.remove());
+          targetNodes.forEach((node) => node.classList.remove("deal-settle"));
+          resolve();
+        });
+      }, duration);
+    });
+  }
+
+  async function dealHandFromDeck() {
+    const previousSettling = settling;
+    settling = true;
+    handCards.forEach((node) => node.classList.add("deal-settle"));
+    if (handCards[0]) void handCards[0].offsetWidth;
+    renderHand();
+    const indexes = handCards
+      .map((node, index) => (node.dataset.uid ? index : -1))
+      .filter((index) => index >= 0);
+    holdHandCardsForDeal(indexes);
+    updateActionButtons();
+    await animateDrawnCardsFromDeck(indexes);
+    settling = previousSettling;
+    updateActionButtons();
   }
 
   function animateCardsToTable(selectedNodes) {
@@ -858,15 +1047,17 @@
         });
 
         window.setTimeout(() => {
-          flyingCards.forEach((card) => card.remove());
           playedCards.classList.remove("preparing");
-          resolve();
+          requestAnimationFrame(() => {
+            flyingCards.forEach((card) => card.remove());
+            resolve();
+          });
         }, 640);
       });
     });
   }
 
-  function advanceRound() {
+  async function advanceRound() {
     roundIndex += 1;
     currentTargetScore = targetScores[roundIndex] ?? Math.round(currentTargetScore * 2.1);
     discardPile.push(...hand.filter(Boolean));
@@ -885,7 +1076,8 @@
     discardsLeft = maxDiscards;
     failed = false;
     hand = drawCards(8);
-    renderHand();
+    sortHand();
+    await dealHandFromDeck();
     unlockRedEyeIfNeeded();
   }
 
@@ -897,8 +1089,9 @@
 
     settling = true;
     updateActionButtons();
-    const result = previewFor(cards);
     const handPreview = handOnlyPreview(cards);
+    const scoringCards = effectiveScoringCards(cards, handPreview.sequence);
+    const result = previewFor(scoringCards);
 
     await animateCardsToTable(selectedNodes);
     await wait(160);
@@ -911,13 +1104,12 @@
     pulseElement(chipsChip);
     await wait(190);
 
-    await animateCardChipScoring(cards, result, handPreview);
+    await animateCardChipScoring(scoringCards, result, handPreview);
 
     multValue.textContent = Number(handPreview.multiplier).toFixed(2).replace(/\.00$/, "");
     await wait(120);
     multValue.textContent = Number(result.multiplier).toFixed(2).replace(/\.00$/, "");
     pulseElement(multChip);
-    playedCards.classList.add("scoring");
     await wait(150);
 
     const nextScore = currentScore + result.profit;
@@ -952,9 +1144,8 @@
       applyRedEyeRoundCostOnClear({ stealLineClears, lifeDebtWouldBurst });
       applyFlipDealerRewardIfNeeded(clearsTarget);
       await wait(240);
-      clearPlayedCardsAfterScore();
-      await wait(280);
-      advanceRound();
+      await clearPlayedCardsAfterScore();
+      await advanceRound();
     } else {
       const scoringFailure = checkFailureAfterScoring(result, currentScore);
       if (scoringFailure?.type === "houseTakes") {
@@ -966,8 +1157,7 @@
         });
       } else {
         await wait(240);
-        clearPlayedCardsAfterScore();
-        await wait(280);
+        await clearPlayedCardsAfterScore();
         consumeActiveRedEyeBetAfterShowdown();
         unlockRedEyeIfNeeded();
       }
@@ -976,7 +1166,7 @@
     updateActionButtons();
   }
 
-  function discardSelectedCards() {
+  async function discardSelectedCards() {
     if (failed || phase === "failed" || settling || redEyeModalOpen || discardsLeft <= 0) return;
     const selectedNodes = selectedHandNodes();
     if (!selectedNodes.length) {
@@ -985,26 +1175,37 @@
     }
     discardButton.title = "";
     const changedIndexes = selectedNodes.map((node) => handCards.indexOf(node)).filter((index) => index >= 0);
-    animateDiscardedCards(selectedNodes);
+    settling = true;
+    updateActionButtons();
+    await animateDiscardedCards(selectedNodes);
 
-    selectedNodes.forEach((node) => {
-      const index = handCards.indexOf(node);
+    const drawnCardIds = [];
+    changedIndexes.forEach((index) => {
       const oldCard = hand[index];
-      discardPile.push(oldCard);
-      selectedIds.delete(oldCard.uid);
+      if (oldCard) {
+        discardPile.push(oldCard);
+        selectedIds.delete(oldCard.uid);
+      }
       hand[index] = drawCards(1)[0] || null;
-      renderCardAt(index);
+      if (hand[index]) drawnCardIds.push(hand[index].uid);
     });
 
-    hand = hand.filter(Boolean);
-    if (hand.length < 8) hand.push(...drawCards(8 - hand.length));
+    sortHand();
+    renderHand();
+    const drawnIndexes = handCards
+      .map((node, index) => (drawnCardIds.includes(node.dataset.uid) ? index : -1))
+      .filter((index) => index >= 0);
+    holdHandCardsForDeal(drawnIndexes);
+
     discardsLeft -= 1;
     redEyeTooltip.classList.remove("show");
-    renderHand();
-    markNewCardsEntering(changedIndexes);
     updateDeckCount();
     updateCounts();
     updatePreview();
+    await animateDrawnCardsFromDeck(drawnIndexes);
+    settling = false;
+    updateCounts();
+    updateDeckCount();
   }
 
   function bindEvents() {
@@ -1067,13 +1268,13 @@
     window.addEventListener("orientationchange", fitBoard);
   }
 
-  function init() {
+  async function init() {
     fitBoard();
     updateTargetScore();
     drawInitialHand();
-    renderHand();
     updateTilt(currentTilt);
     bindEvents();
+    await dealHandFromDeck();
     unlockRedEyeIfNeeded();
   }
 
