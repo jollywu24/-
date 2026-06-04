@@ -1,7 +1,7 @@
 (function () {
   const boardWidth = 1600;
   const boardHeight = 900;
-  const redEyeThreshold = 60;
+  const redEyeThreshold = 70;
   const tiltReliefOnClear = 30;
   const targetScores = [300, 700, 1500, 3200, 7000];
   const showdownsMax = 3;
@@ -12,43 +12,43 @@
       id: "replay",
       name: "再押一手",
       icon: "♠",
-      pressure: 15,
-      text: "本手所有已出牌重复触发 1 次。上头值 +15。"
+      hypeCost: 8,
+      text: "本手所有有效牌重复触发 1 次。固定上头 +8，追加 1 张暗涌牌。"
     },
     redDouble: {
       id: "redDouble",
       name: "红眼翻倍",
       icon: "●",
-      pressure: 20,
-      text: "本手倍率 ×2。上头值 +20。"
+      hypeCost: 12,
+      text: "本手倍率 ×2。固定上头 +12，追加 1 张暗涌牌。"
     },
     borrow: {
       id: "borrow",
       name: "借鬼钱",
       icon: "☠",
-      pressure: 0,
-      text: "本手筹码 +100。下一轮起始上头值 +25。"
+      hypeCost: 0,
+      text: "本手筹码 +100。追加 1 张暗涌牌，下一轮起始上头 +25。"
     },
     stealLine: {
       id: "stealLine",
       name: "偷过线",
       icon: "◇",
-      pressure: 0,
-      text: "本手结算后，若分数达到目标 90%，直接视为达标。下一轮起始上头值 +30。"
+      hypeCost: 0,
+      text: "若分数达到目标 90%，直接视为达标。追加 1 张暗涌牌，下轮上头 +30。"
     },
     flipDealer: {
       id: "flipDealer",
       name: "翻庄",
       icon: "↟",
-      pressure: 0,
-      text: "若本手过关且上头值处于 95-99，当前赌资翻倍，最多额外获得 20。"
+      hypeCost: 6,
+      text: "95-99 过关时赌资翻倍，最多额外 +20。固定上头 +6，追加 1 张暗涌牌。"
     },
     lifeDebt: {
       id: "lifeDebt",
       name: "欠命",
       icon: "†",
-      pressure: 0,
-      text: "本手不会爆牌；若本应爆牌，上头值停在 99。若本手后成功过关，下一轮从 90 开始。"
+      hypeCost: 0,
+      text: "本手不会爆牌，追加 1 张暗涌牌。若成功过关，下一轮上头至少 90。"
     }
   };
   const phaseSuit = {
@@ -371,15 +371,16 @@
     return logic.resolveModule(card, run, options);
   }
 
-  function previewFor(cards) {
-    const result = logic.simulatePreview({
+  function previewFor(cards, options = {}) {
+    return logic.simulatePreview({
       slots: cards.slice(0, 5),
       state: runState(),
       baseProfit: 0,
       resolveModuleFn: resolveCard,
-      slotCount: 5
+      slotCount: 5,
+      redEyeBet: activeRedEyeBet,
+      surgeCard: options.surgeCard || null
     });
-    return applyRedEyeBet(result, cards);
   }
 
   function handOnlyPreview(cards) {
@@ -393,82 +394,12 @@
     };
   }
 
-  function effectiveScoringCards(cards, sequence) {
-    if (!cards.length || !sequence) return [];
-    const limitedCards = cards.slice(0, 5);
-    if (["straight", "flush", "fullHouse", "straightFlush"].includes(sequence.id)) return limitedCards;
-
-    const rankCounts = new Map();
-    limitedCards.forEach((card) => rankCounts.set(card.rank, (rankCounts.get(card.rank) || 0) + 1));
-
-    if (sequence.id === "highCard") {
-      const highestRank = Math.max(...limitedCards.map((card) => card.rank));
-      return limitedCards.filter((card) => card.rank === highestRank).slice(0, 1);
-    }
-
-    if (sequence.id === "pair") {
-      const pairRank = [...rankCounts.entries()].find(([, count]) => count === 2)?.[0];
-      return limitedCards.filter((card) => card.rank === pairRank);
-    }
-
-    if (sequence.id === "twoPair") {
-      const pairRanks = new Set([...rankCounts.entries()].filter(([, count]) => count === 2).map(([rank]) => rank));
-      return limitedCards.filter((card) => pairRanks.has(card.rank));
-    }
-
-    if (sequence.id === "threeKind") {
-      const tripleRank = [...rankCounts.entries()].find(([, count]) => count === 3)?.[0];
-      return limitedCards.filter((card) => card.rank === tripleRank);
-    }
-
-    if (sequence.id === "fourKind") {
-      const quadRank = [...rankCounts.entries()].find(([, count]) => count === 4)?.[0];
-      return limitedCards.filter((card) => card.rank === quadRank);
-    }
-
-    return limitedCards;
-  }
-
   function redEyeBetIsActive() {
     return Boolean(activeRedEyeBet);
   }
 
   function activeRedEyeBetId() {
     return activeRedEyeBet ? activeRedEyeBet.id : "";
-  }
-
-  function applyRedEyeBet(result, cards) {
-    if (!redEyeBetIsActive() || !cards.length) return result;
-
-    const modified = {
-      ...result,
-      sequence: result.sequence ? { ...result.sequence } : null
-    };
-
-    if (activeRedEyeBet.id === "replay") {
-      const run = {
-        base: modified.base,
-        pressure: modified.pressure
-      };
-      cards.forEach((card) => card.preview(run));
-      modified.base = run.base;
-      modified.pressure = run.pressure + activeRedEyeBet.pressure;
-    }
-
-    if (activeRedEyeBet.id === "redDouble") {
-      modified.multiplier *= 2;
-      modified.pressure += activeRedEyeBet.pressure;
-    }
-
-    if (activeRedEyeBet.id === "borrow") {
-      modified.base += 100;
-    }
-
-    modified.profit = logic.currentRunProfit({
-      base: modified.base,
-      multiplier: modified.multiplier
-    });
-    return modified;
   }
 
   function updatePreview() {
@@ -657,7 +588,11 @@
   }
 
   function redEyeTooltipText() {
-    if (activeRedEyeBet) return `${activeRedEyeBet.name}（下一手生效）：${activeRedEyeBet.text}`;
+    if (activeRedEyeBet) {
+      const preview = logic.redEyeHypePreview(activeRedEyeBet);
+      const range = preview ? ` 暗涌风险：上头 +${preview.min}~+${preview.max}。` : "";
+      return `${activeRedEyeBet.name}（下一手生效）：${activeRedEyeBet.text}${range}`;
+    }
     if (redEyeUsedThisRound) return "本轮红眼赌注已使用。下一轮重新锁定。";
     if (redEyeUnlocked) return "红眼赌注已解锁。点击入口选择下一手加注。";
     return "尚未解锁红眼赌注。";
@@ -792,7 +727,7 @@
     const betId = activeRedEyeBetId();
     if (betId === "borrow") pendingNextRoundTiltBonus += 25;
     if (stealLineClears) pendingNextRoundTiltBonus += 30;
-    if (betId === "lifeDebt" && lifeDebtWouldBurst) pendingNextRoundTiltOverride = 90;
+    if (betId === "lifeDebt") pendingNextRoundTiltOverride = 90;
   }
 
   function applyFlipDealerRewardIfNeeded(clearsTarget) {
@@ -1064,7 +999,10 @@
     resetRedEyeForNextRound();
     redEyeEntry.classList.remove("round-failed");
     const relievedTilt = Math.max(0, currentTilt - tiltReliefOnClear);
-    const nextTilt = pendingNextRoundTiltOverride ?? relievedTilt + pendingNextRoundTiltBonus;
+    const normalNextTilt = relievedTilt + pendingNextRoundTiltBonus;
+    const nextTilt = pendingNextRoundTiltOverride === null
+      ? normalNextTilt
+      : Math.max(pendingNextRoundTiltOverride, normalNextTilt);
     pendingNextRoundTiltBonus = 0;
     pendingNextRoundTiltOverride = null;
     updateTilt(nextTilt);
@@ -1090,8 +1028,13 @@
     settling = true;
     updateActionButtons();
     const handPreview = handOnlyPreview(cards);
-    const scoringCards = effectiveScoringCards(cards, handPreview.sequence);
-    const result = previewFor(scoringCards);
+    const scoringCards = logic.effectiveScoringCards(cards, handPreview.sequence);
+    const surgeCard = redEyeBetIsActive() ? drawCards(1)[0] || null : null;
+    if (surgeCard) {
+      discardPile.push(surgeCard);
+      updateDeckCount();
+    }
+    const result = previewFor(scoringCards, { surgeCard });
 
     await animateCardsToTable(selectedNodes);
     await wait(160);

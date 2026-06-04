@@ -2,10 +2,25 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import pkg from '../logic-pure.js';
 
-const { evaluateIgnitionSequence, sequenceAtLevel, applySimpleJokers, applyRedHeatCore, createRunState, createRng, createStandardDeck, simulatePreview } = pkg;
+const { evaluateIgnitionSequence, effectiveScoringCards, sequenceAtLevel, applySimpleJokers, applyRedHeatCore, createRunState, createRng, createStandardDeck, simulatePreview, cardHypeValue } = pkg;
 
 function card(rank, phase = 'kinetic') {
   return { chips: rank, phase };
+}
+
+function playableCard(rank, phase = 'kinetic') {
+  const label = rank === 14 ? 'A' : rank === 13 ? 'K' : rank === 12 ? 'Q' : rank === 11 ? 'J' : String(rank);
+  return {
+    rank,
+    rankLabel: label,
+    chips: rank,
+    phase,
+    trigger: 'ON_RESOLVE',
+    preview(run) {
+      run.base += rank;
+      run.pressure += cardHypeValue(this);
+    },
+  };
 }
 
 test('evaluateIgnitionSequence follows Balatro poker hand priority', () => {
@@ -30,6 +45,125 @@ test('createStandardDeck builds a true 52 card deck from 2 through A', () => {
   assert.equal(new Set(deck.map((card) => card.deckId)).size, 52);
   assert.deepEqual([...new Set(deck.map((card) => card.rank))].sort((a, b) => a - b), [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
   assert.equal(deck.filter((card) => card.rankLabel === 'A').length, 4);
+});
+
+test('card hype values follow poker and blackjack mental math', () => {
+  assert.equal(cardHypeValue(playableCard(2)), 2);
+  assert.equal(cardHypeValue(playableCard(10)), 10);
+  assert.equal(cardHypeValue(playableCard(11)), 10);
+  assert.equal(cardHypeValue(playableCard(12)), 10);
+  assert.equal(cardHypeValue(playableCard(13)), 10);
+  assert.equal(cardHypeValue(playableCard(14)), 11);
+
+  const deck = createStandardDeck();
+  assert.equal(deck.find((item) => item.rank === 2).pressureCost, 2);
+  assert.equal(deck.find((item) => item.rank === 13).pressureCost, 10);
+  assert.equal(deck.find((item) => item.rank === 14).pressureCost, 11);
+});
+
+test('simulatePreview calculates deterministic hype from effective cards plus hand type', () => {
+  const allCards = [
+    playableCard(13, 'kinetic'),
+    playableCard(13, 'pulse'),
+    playableCard(8, 'kinetic'),
+    playableCard(8, 'thermal'),
+    playableCard(5, 'toxic'),
+  ];
+  const sequence = evaluateIgnitionSequence(allCards, 5);
+  const effectiveCards = effectiveScoringCards(allCards, sequence);
+  const out = simulatePreview({
+    slots: effectiveCards,
+    state: { pressure: 0, baseDebt: 0 },
+    baseProfit: 0,
+    resolveModuleFn: (m, run, options) => {
+      if (options?.preview) m.preview(run);
+    },
+  });
+
+  assert.equal(sequence.name, '两对');
+  assert.equal(effectiveCards.length, 4);
+  assert.equal(out.hypeBaseFromCards, 36);
+  assert.equal(out.hypeFromHandType, 4);
+  assert.equal(out.hypeDeltaTotal, 40);
+  assert.equal(out.pressure, 40);
+});
+
+test('straight hype stays easy to count for low and high straights', () => {
+  const lowStraight = [
+    playableCard(2, 'kinetic'),
+    playableCard(3, 'pulse'),
+    playableCard(4, 'thermal'),
+    playableCard(5, 'toxic'),
+    playableCard(6, 'kinetic'),
+  ];
+  const highStraight = [
+    playableCard(10, 'kinetic'),
+    playableCard(11, 'pulse'),
+    playableCard(12, 'thermal'),
+    playableCard(13, 'toxic'),
+    playableCard(14, 'kinetic'),
+  ];
+
+  const low = simulatePreview({
+    slots: effectiveScoringCards(lowStraight, evaluateIgnitionSequence(lowStraight, 5)),
+    state: { pressure: 0, baseDebt: 0 },
+    baseProfit: 0,
+    resolveModuleFn: (m, run, options) => {
+      if (options?.preview) m.preview(run);
+    },
+  });
+  const high = simulatePreview({
+    slots: effectiveScoringCards(highStraight, evaluateIgnitionSequence(highStraight, 5)),
+    state: { pressure: 0, baseDebt: 0 },
+    baseProfit: 0,
+    resolveModuleFn: (m, run, options) => {
+      if (options?.preview) m.preview(run);
+    },
+  });
+
+  assert.equal(low.hypeBaseFromCards, 20);
+  assert.equal(low.hypeFromHandType, 8);
+  assert.equal(low.pressure, 28);
+  assert.equal(high.hypeBaseFromCards, 51);
+  assert.equal(high.hypeFromHandType, 8);
+  assert.equal(high.pressure, 59);
+});
+
+test('red eye bet adds fixed hype and one surge card without exact preview odds', () => {
+  const cards = [
+    playableCard(2, 'kinetic'),
+    playableCard(3, 'pulse'),
+    playableCard(4, 'thermal'),
+    playableCard(5, 'toxic'),
+    playableCard(6, 'kinetic'),
+  ];
+  const redDouble = { id: 'redDouble', hypeCost: 12 };
+  const preview = simulatePreview({
+    slots: effectiveScoringCards(cards, evaluateIgnitionSequence(cards, 5)),
+    state: { pressure: 0, baseDebt: 0 },
+    baseProfit: 0,
+    redEyeBet: redDouble,
+    resolveModuleFn: (m, run, options) => {
+      if (options?.preview) m.preview(run);
+    },
+  });
+  const resolved = simulatePreview({
+    slots: effectiveScoringCards(cards, evaluateIgnitionSequence(cards, 5)),
+    state: { pressure: 0, baseDebt: 0 },
+    baseProfit: 0,
+    redEyeBet: redDouble,
+    surgeCard: playableCard(12, 'pulse'),
+    resolveModuleFn: (m, run, options) => {
+      if (options?.preview) m.preview(run);
+    },
+  });
+
+  assert.equal(preview.hypeDeltaTotal, 40);
+  assert.equal(preview.hypePreviewMin, 42);
+  assert.equal(preview.hypePreviewMax, 51);
+  assert.equal(resolved.hypeFromRedEyeBet, 12);
+  assert.equal(resolved.hypeFromSurgeCard, 10);
+  assert.equal(resolved.pressure, 50);
 });
 
 test('createRng returns repeatable sequences for the same seed', () => {

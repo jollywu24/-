@@ -1,30 +1,30 @@
 (function (global) {
   const SEQUENCES = {
-    highCard: { id: "highCard", name: "高牌", base: 5, mult: 1, limit: 0, baseGrowth: 3, multGrowth: 0.2 },
-    pair: { id: "pair", name: "对子", base: 10, mult: 2, limit: 0, baseGrowth: 5, multGrowth: 0.35 },
-    twoPair: { id: "twoPair", name: "两对", base: 20, mult: 2, limit: 0, baseGrowth: 7, multGrowth: 0.4 },
-    threeKind: { id: "threeKind", name: "三条", base: 30, mult: 3, limit: 0, baseGrowth: 10, multGrowth: 0.55 },
-    straight: { id: "straight", name: "顺子", base: 30, mult: 4, limit: 0, baseGrowth: 10, multGrowth: 0.65 },
-    flush: { id: "flush", name: "同花", base: 35, mult: 4, limit: 0, baseGrowth: 12, multGrowth: 0.7 },
-    fullHouse: { id: "fullHouse", name: "葫芦", base: 40, mult: 4, limit: 0, baseGrowth: 14, multGrowth: 0.75 },
-    fourKind: { id: "fourKind", name: "四条", base: 60, mult: 7, limit: 0, baseGrowth: 18, multGrowth: 1 },
-    straightFlush: { id: "straightFlush", name: "同花顺", base: 100, mult: 8, limit: 0, baseGrowth: 25, multGrowth: 1.2 }
+    highCard: { id: "highCard", name: "高牌", base: 5, mult: 1, hype: 0, limit: 0, baseGrowth: 3, multGrowth: 0.2 },
+    pair: { id: "pair", name: "对子", base: 10, mult: 2, hype: 2, limit: 0, baseGrowth: 5, multGrowth: 0.35 },
+    twoPair: { id: "twoPair", name: "两对", base: 20, mult: 2, hype: 4, limit: 0, baseGrowth: 7, multGrowth: 0.4 },
+    threeKind: { id: "threeKind", name: "三条", base: 30, mult: 3, hype: 6, limit: 0, baseGrowth: 10, multGrowth: 0.55 },
+    straight: { id: "straight", name: "顺子", base: 30, mult: 4, hype: 8, limit: 0, baseGrowth: 10, multGrowth: 0.65 },
+    flush: { id: "flush", name: "同花", base: 35, mult: 4, hype: 8, limit: 0, baseGrowth: 12, multGrowth: 0.7 },
+    fullHouse: { id: "fullHouse", name: "葫芦", base: 40, mult: 4, hype: 10, limit: 0, baseGrowth: 14, multGrowth: 0.75 },
+    fourKind: { id: "fourKind", name: "四条", base: 60, mult: 7, hype: 12, limit: 0, baseGrowth: 18, multGrowth: 1 },
+    straightFlush: { id: "straightFlush", name: "同花顺", base: 100, mult: 8, hype: 14, limit: 0, baseGrowth: 25, multGrowth: 1.2 }
   };
 
   const STANDARD_RANKS = [
-    { value: 2, label: "2", chips: 2, pressure: 1 },
-    { value: 3, label: "3", chips: 3, pressure: 1 },
-    { value: 4, label: "4", chips: 4, pressure: 1 },
-    { value: 5, label: "5", chips: 5, pressure: 2 },
-    { value: 6, label: "6", chips: 6, pressure: 2 },
-    { value: 7, label: "7", chips: 7, pressure: 2 },
-    { value: 8, label: "8", chips: 8, pressure: 3 },
-    { value: 9, label: "9", chips: 9, pressure: 3 },
-    { value: 10, label: "10", chips: 10, pressure: 3 },
-    { value: 11, label: "J", chips: 11, pressure: 4 },
-    { value: 12, label: "Q", chips: 12, pressure: 4 },
-    { value: 13, label: "K", chips: 13, pressure: 5 },
-    { value: 14, label: "A", chips: 14, pressure: 6 }
+    { value: 2, label: "2", chips: 2, pressure: 2 },
+    { value: 3, label: "3", chips: 3, pressure: 3 },
+    { value: 4, label: "4", chips: 4, pressure: 4 },
+    { value: 5, label: "5", chips: 5, pressure: 5 },
+    { value: 6, label: "6", chips: 6, pressure: 6 },
+    { value: 7, label: "7", chips: 7, pressure: 7 },
+    { value: 8, label: "8", chips: 8, pressure: 8 },
+    { value: 9, label: "9", chips: 9, pressure: 9 },
+    { value: 10, label: "10", chips: 10, pressure: 10 },
+    { value: 11, label: "J", chips: 11, pressure: 10 },
+    { value: 12, label: "Q", chips: 12, pressure: 10 },
+    { value: 13, label: "K", chips: 13, pressure: 10 },
+    { value: 14, label: "A", chips: 14, pressure: 11 }
   ];
 
   const STANDARD_PHASES = [
@@ -95,6 +95,46 @@
     return unique.every((rank, index) => index === 0 || rank - unique[index - 1] === 1);
   }
 
+  function effectiveScoringCards(cards, sequence = null) {
+    if (!cards.length) return [];
+    const limitedCards = cards.filter(Boolean).slice(0, 5);
+    const activeSequence = sequence || evaluateIgnitionSequence(limitedCards, 5);
+    if (["straight", "flush", "fullHouse", "straightFlush"].includes(activeSequence.id)) return limitedCards;
+
+    const rankCounts = new Map();
+    limitedCards.forEach((card) => {
+      const rank = cardRank(card, 0);
+      rankCounts.set(rank, (rankCounts.get(rank) || 0) + 1);
+    });
+
+    if (activeSequence.id === "highCard") {
+      const highestRank = Math.max(...limitedCards.map((card) => cardRank(card, 0)));
+      return limitedCards.filter((card) => cardRank(card, 0) === highestRank).slice(0, 1);
+    }
+
+    if (activeSequence.id === "pair") {
+      const pairRank = [...rankCounts.entries()].find(([, count]) => count === 2)?.[0];
+      return limitedCards.filter((card) => cardRank(card, 0) === pairRank);
+    }
+
+    if (activeSequence.id === "twoPair") {
+      const pairRanks = new Set([...rankCounts.entries()].filter(([, count]) => count === 2).map(([rank]) => rank));
+      return limitedCards.filter((card) => pairRanks.has(cardRank(card, 0)));
+    }
+
+    if (activeSequence.id === "threeKind") {
+      const tripleRank = [...rankCounts.entries()].find(([, count]) => count === 3)?.[0];
+      return limitedCards.filter((card) => cardRank(card, 0) === tripleRank);
+    }
+
+    if (activeSequence.id === "fourKind") {
+      const quadRank = [...rankCounts.entries()].find(([, count]) => count === 4)?.[0];
+      return limitedCards.filter((card) => cardRank(card, 0) === quadRank);
+    }
+
+    return limitedCards;
+  }
+
   function sequenceAtLevel(sequence, level = 1) {
     const safeLevel = Math.max(1, Math.floor(Number(level) || 1));
     const extra = safeLevel - 1;
@@ -106,10 +146,52 @@
     };
   }
 
+  function cardHypeValue(card) {
+    const rank = Number(cardRank(card, 0));
+    if (!Number.isFinite(rank)) return 0;
+    if (rank >= 2 && rank <= 10) return rank;
+    if (rank >= 11 && rank <= 13) return 10;
+    if (rank === 14) return 11;
+    return 0;
+  }
+
+  function redEyeFixedHype(redEyeBet) {
+    return Math.max(0, Number(redEyeBet?.hypeCost ?? redEyeBet?.pressure ?? 0) || 0);
+  }
+
+  function redEyeHypePreview(redEyeBet) {
+    if (!redEyeBet) return null;
+    const fixed = redEyeFixedHype(redEyeBet);
+    return {
+      min: fixed + 2,
+      max: fixed + 11
+    };
+  }
+
+  function calculateHypeBreakdown({ cards = [], sequence = null, redEyeBet = null, surgeCard = null }) {
+    const hypeBaseFromCards = cards.reduce((sum, card) => sum + cardHypeValue(card), 0);
+    const hypeFromHandType = sequence?.hype || 0;
+    const hypeFromRedEyeBet = redEyeBet ? redEyeFixedHype(redEyeBet) : 0;
+    const hypeFromSurgeCard = redEyeBet && surgeCard ? cardHypeValue(surgeCard) : 0;
+    const hypeDeltaTotal = hypeBaseFromCards + hypeFromHandType + hypeFromRedEyeBet + hypeFromSurgeCard;
+    const preview = redEyeBet && !surgeCard ? redEyeHypePreview(redEyeBet) : null;
+    return {
+      hypeBaseFromCards,
+      hypeFromHandType,
+      hypeFromRedEyeBet,
+      hypeFromSurgeCard,
+      hypeDeltaTotal,
+      surgeCard: surgeCard || null,
+      hypePreviewMin: preview ? hypeBaseFromCards + hypeFromHandType + preview.min : hypeDeltaTotal,
+      hypePreviewMax: preview ? hypeBaseFromCards + hypeFromHandType + preview.max : hypeDeltaTotal
+    };
+  }
+
   function applyIgnitionSequence(run, sequence, level = 1) {
     const leveled = sequenceAtLevel(sequence, level);
     run.base += leveled.base;
     run.multiplier *= leveled.mult;
+    run.pressure += leveled.hype || 0;
     run.explosionLimit += leveled.limit;
     return leveled;
   }
@@ -219,6 +301,17 @@
     return Math.max(0, Math.round(run.base * run.multiplier));
   }
 
+  function applyRedEyeBet(run, cards, redEyeBet) {
+    if (!redEyeBet) return;
+    if (redEyeBet.id === "replay") {
+      cards.forEach((card) => {
+        run.base += Number(card?.chips || 0);
+      });
+    }
+    if (redEyeBet.id === "redDouble") run.multiplier *= 2;
+    if (redEyeBet.id === "borrow") run.base += 100;
+  }
+
   function createStandardDeck() {
     return STANDARD_PHASES.flatMap((phase) =>
       STANDARD_RANKS.map((rank) => ({
@@ -234,7 +327,7 @@
     );
   }
 
-  function simulatePreview({ slots, state, baseProfit, resolveModuleFn, slotCount = 5 }) {
+  function simulatePreview({ slots, state, baseProfit, resolveModuleFn, slotCount = 5, redEyeBet = null, surgeCard = null }) {
     if (!slots.some(Boolean)) {
       return {
         profit: 0,
@@ -243,10 +336,19 @@
         multiplier: 1,
         limit: 100,
         sequence: null,
+        hypeBaseFromCards: 0,
+        hypeFromHandType: 0,
+        hypeFromRedEyeBet: 0,
+        hypeFromSurgeCard: 0,
+        hypeDeltaTotal: 0,
+        surgeCard: null,
+        hypePreviewMin: 0,
+        hypePreviewMax: 0,
         riskText: "未装入"
       };
     }
 
+    const activeCards = slots.filter(Boolean);
     const run = createRunState(state, baseProfit);
     const sequence = evaluateIgnitionSequence(slots, slotCount);
     const sequenceLevel = state.handLevels?.[sequence.id] || 1;
@@ -266,6 +368,15 @@
       applyRedHeatCore(run, { ownedJokers: state.ownedJokers || [] });
       if (handlePressureLimit(run) === "blown") blown = true;
     }
+
+    applyRedEyeBet(run, activeCards, redEyeBet);
+    const hypeBreakdown = calculateHypeBreakdown({
+      cards: activeCards,
+      sequence: leveledSequence,
+      redEyeBet,
+      surgeCard
+    });
+    run.pressure += hypeBreakdown.hypeFromRedEyeBet + hypeBreakdown.hypeFromSurgeCard;
 
     const lastModule = [...slots].reverse().find(Boolean);
     if (!blown && run.redlineRepeatLast && !run.redlineRepeatUsed && lastModule) {
@@ -296,6 +407,7 @@
       multiplier: run.multiplier,
       limit: run.explosionLimit,
       sequence: leveledSequence,
+      ...hypeBreakdown,
       riskText
     };
   }
@@ -306,7 +418,11 @@
     STANDARD_PHASES,
     createRng,
     evaluateIgnitionSequence,
+    effectiveScoringCards,
     sequenceAtLevel,
+    cardHypeValue,
+    redEyeHypePreview,
+    calculateHypeBreakdown,
     applyIgnitionSequence,
     createStandardDeck,
     applySimpleJokers,
