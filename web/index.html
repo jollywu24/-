@@ -204,6 +204,24 @@
         </div>
       </section>
 
+      <section class="round-clear-overlay" aria-hidden="true">
+        <div class="round-clear-card" role="dialog" aria-modal="true" aria-labelledby="roundClearTitle">
+          <p class="round-clear-kicker">本轮成功通关</p>
+          <h2 class="round-clear-title" id="roundClearTitle">结算收益</h2>
+          <div class="round-clear-current">
+            <span>本轮收益</span>
+            <strong>$0</strong>
+          </div>
+          <div class="round-clear-detail-label">奖励明细</div>
+          <dl class="round-clear-rewards"></dl>
+          <div class="round-clear-total">
+            <span>总计收益</span>
+            <strong>$0</strong>
+          </div>
+          <button class="round-clear-continue" type="button" disabled>进入下一局</button>
+        </div>
+      </section>
+
       <section class="failure-overlay" aria-hidden="true">
         <div class="failure-card" role="dialog" aria-modal="true" aria-labelledby="failureTitle">
           <p class="failure-kicker">当前赌局失败</p>
@@ -219,6 +237,6 @@
   </div>
 
   <script src="./logic-pure.js"></script>
-  <script src="./app.js?v=red-eye-bets-6-pick-3"></script>
+  <script src="./app.js?v=round-clear-reward"></script>
 </body>
 </html>

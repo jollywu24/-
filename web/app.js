@@ -6,6 +6,9 @@
   const targetScores = [300, 700, 1500, 3200, 7000];
   const showdownsMax = 3;
   const maxDiscards = 2;
+  const CLEAR_REWARD = 4;
+  const PLAY_REWARD = 1;
+  const DISCARD_REWARD = 2;
   const logic = window.GameLogic;
   const redEyeBets = {
     replay: {
@@ -97,6 +100,7 @@
   let redEyeOfferIds = [];
   let pendingNextRoundTiltBonus = 0;
   let pendingNextRoundTiltOverride = null;
+  let pendingRoundReward = 0;
 
   const board = document.querySelector(".game-board");
   const handCards = [...document.querySelectorAll(".hand-card")];
@@ -131,6 +135,11 @@
   const failureSubtitle = document.querySelector(".failure-subtitle");
   const failureStats = document.querySelector(".failure-stats");
   const failureRestart = document.querySelector(".failure-restart");
+  const roundClearOverlay = document.querySelector(".round-clear-overlay");
+  const roundClearCurrent = document.querySelector(".round-clear-current strong");
+  const roundClearRewards = document.querySelector(".round-clear-rewards");
+  const roundClearTotal = document.querySelector(".round-clear-total strong");
+  const roundClearContinue = document.querySelector(".round-clear-continue");
 
   function fitBoard() {
     const scale = Math.min(window.innerWidth / boardWidth, window.innerHeight / boardHeight);
@@ -302,7 +311,7 @@
   }
 
   function updateActionButtons() {
-    const locked = failed || phase === "failed" || settling || redEyeModalOpen;
+    const locked = failed || phase !== "playing" || settling || redEyeModalOpen;
     showdownButton.disabled = locked || showdownsLeft <= 0;
     discardButton.disabled = locked || discardsLeft <= 0;
   }
@@ -637,7 +646,7 @@
   }
 
   function handleRedEyeEntryClick() {
-    if (failed || phase === "failed" || settling || redEyeModalOpen) return;
+    if (failed || phase !== "playing" || settling || redEyeModalOpen) return;
     if (redEyeUnlocked && !redEyeUsedThisRound && !activeRedEyeBet) {
       openRedEyeModal();
       return;
@@ -730,13 +739,130 @@
     if (betId === "lifeDebt") pendingNextRoundTiltOverride = 90;
   }
 
-  function applyFlipDealerRewardIfNeeded(clearsTarget) {
-    if (activeRedEyeBetId() !== "flipDealer" || !clearsTarget) return;
-    if (currentTilt < 95 || currentTilt >= 100) return;
-    const gain = Math.min(currentStake, 20);
-    currentStake += gain;
+  function calculateFlipDealerBonus(clearsTarget) {
+    if (activeRedEyeBetId() !== "flipDealer" || !clearsTarget) return 0;
+    if (currentTilt < 95 || currentTilt >= 100) return 0;
+    return Math.min(currentStake, 20);
+  }
+
+  function rewardLine(key, label, amount, detail = "") {
+    return { key, label, amount: Math.max(0, Math.round(amount || 0)), detail };
+  }
+
+  function calculateRoundReward({ flipBonus = 0 } = {}) {
+    const clearReward = CLEAR_REWARD;
+    const remainingPlayReward = showdownsLeft * PLAY_REWARD;
+    const remainingDiscardReward = discardsLeft * DISCARD_REWARD;
+    const redEyeReward = 0;
+    const ghostBonus = 0;
+    const lines = [
+      rewardLine("clearReward", "达标奖励", clearReward, "通关本局"),
+      rewardLine("remainingPlayReward", "剩余摊牌奖励", remainingPlayReward, `${showdownsLeft} 次 × $${PLAY_REWARD}`),
+      rewardLine("remainingDiscardReward", "剩余换牌奖励", remainingDiscardReward, `${discardsLeft} 次 × $${DISCARD_REWARD}`)
+    ];
+
+    if (redEyeReward > 0) lines.push(rewardLine("redEyeReward", "红眼赌注奖励", redEyeReward));
+    if (flipBonus > 0) lines.push(rewardLine("flipBonus", "翻庄奖励", flipBonus, `当前赌资 $${formatNumber(currentStake)}，最多额外 +$20`));
+    if (ghostBonus > 0) lines.push(rewardLine("ghostBonus", "赌鬼奖励", ghostBonus));
+
+    const total = lines.reduce((sum, line) => sum + line.amount, 0);
+    return {
+      clearReward,
+      remainingPlayReward,
+      remainingDiscardReward,
+      redEyeReward,
+      flipBonus,
+      ghostBonus,
+      total,
+      lines
+    };
+  }
+
+  function renderRoundRewardRows(reward) {
+    roundClearRewards.innerHTML = reward.lines
+      .map((line) => `
+        <div class="round-clear-row" data-key="${line.key}">
+          <dt>${line.label}${line.detail ? `<small>${line.detail}</small>` : ""}</dt>
+          <dd data-amount="${line.amount}">$0</dd>
+        </div>
+      `)
+      .join("");
+  }
+
+  function animateMoney(element, from, to, duration = 420) {
+    const start = performance.now();
+    return new Promise((resolve) => {
+      function tick(now) {
+        const progress = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const value = Math.round(from + (to - from) * eased);
+        element.textContent = `$${formatNumber(value)}`;
+        if (progress < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          element.textContent = `$${formatNumber(to)}`;
+          resolve();
+        }
+      }
+      requestAnimationFrame(tick);
+    });
+  }
+
+  async function animateRoundRewardRows(reward) {
+    const rows = [...roundClearRewards.querySelectorAll(".round-clear-row")];
+    for (const row of rows) {
+      const amountNode = row.querySelector("dd");
+      const amount = Number(amountNode.dataset.amount || 0);
+      row.classList.add("is-visible");
+      await animateMoney(amountNode, 0, amount, 260);
+      await wait(120);
+    }
+    await Promise.all([
+      animateMoney(roundClearCurrent, 0, reward.total, 520),
+      animateMoney(roundClearTotal, 0, reward.total, 520)
+    ]);
+    roundClearContinue.disabled = false;
+    roundClearContinue.classList.add("is-ready");
+  }
+
+  async function showRoundClearOverlay(reward) {
+    phase = "roundClear";
+    pendingRoundReward = reward.total;
+    roundClearCurrent.textContent = "$0";
+    roundClearTotal.textContent = "$0";
+    roundClearContinue.disabled = true;
+    roundClearContinue.classList.remove("is-ready");
+    renderRoundRewardRows(reward);
+    roundClearOverlay.classList.add("show");
+    roundClearOverlay.setAttribute("aria-hidden", "false");
+    updateActionButtons();
+    await wait(120);
+    await animateRoundRewardRows(reward);
+  }
+
+  function hideRoundClearOverlay() {
+    roundClearOverlay.classList.remove("show");
+    roundClearOverlay.setAttribute("aria-hidden", "true");
+    roundClearRewards.replaceChildren();
+    roundClearCurrent.textContent = "$0";
+    roundClearTotal.textContent = "$0";
+    roundClearContinue.disabled = true;
+    roundClearContinue.classList.remove("is-ready");
+  }
+
+  async function proceedToNextRound() {
+    if (phase !== "roundClear" || settling) return;
+    settling = true;
+    roundClearContinue.disabled = true;
+    currentStake += pendingRoundReward;
+    pendingRoundReward = 0;
     updateStake();
     pulseElement(document.querySelector(".stake-row"), "flash");
+    hideRoundClearOverlay();
+    phase = "playing";
+    await advanceRound();
+    settling = false;
+    updateActionButtons();
   }
 
   function hideFailureOverlay() {
@@ -786,8 +912,10 @@
     redEyeOptionsPanel.innerHTML = "";
     pendingNextRoundTiltBonus = 0;
     pendingNextRoundTiltOverride = null;
+    pendingRoundReward = 0;
     selectedIds = new Set();
     hideFailureOverlay();
+    hideRoundClearOverlay();
     clearFailureEffects();
     closeRedEyeModal();
     redEyeEntry.classList.remove("has-choice", "is-unlocked", "is-spent");
@@ -993,6 +1121,7 @@
   }
 
   async function advanceRound() {
+    phase = "playing";
     roundIndex += 1;
     currentTargetScore = targetScores[roundIndex] ?? Math.round(currentTargetScore * 2.1);
     discardPile.push(...hand.filter(Boolean));
@@ -1020,7 +1149,7 @@
   }
 
   async function showdown() {
-    if (failed || phase === "failed" || settling || redEyeModalOpen || showdownsLeft <= 0) return;
+    if (failed || phase !== "playing" || settling || redEyeModalOpen || showdownsLeft <= 0) return;
     const selectedNodes = selectedHandNodes();
     const cards = selectedCards();
     if (!cards.length) return;
@@ -1085,10 +1214,12 @@
 
     if (clearsTarget) {
       applyRedEyeRoundCostOnClear({ stealLineClears, lifeDebtWouldBurst });
-      applyFlipDealerRewardIfNeeded(clearsTarget);
+      const reward = calculateRoundReward({
+        flipBonus: calculateFlipDealerBonus(clearsTarget)
+      });
       await wait(240);
       await clearPlayedCardsAfterScore();
-      await advanceRound();
+      await showRoundClearOverlay(reward);
     } else {
       const scoringFailure = checkFailureAfterScoring(result, currentScore);
       if (scoringFailure?.type === "houseTakes") {
@@ -1110,7 +1241,7 @@
   }
 
   async function discardSelectedCards() {
-    if (failed || phase === "failed" || settling || redEyeModalOpen || discardsLeft <= 0) return;
+    if (failed || phase !== "playing" || settling || redEyeModalOpen || discardsLeft <= 0) return;
     const selectedNodes = selectedHandNodes();
     if (!selectedNodes.length) {
       discardButton.title = "先选择要换掉的手牌";
@@ -1154,7 +1285,7 @@
   function bindEvents() {
     handCards.forEach((card) => {
       card.addEventListener("click", () => {
-        if (failed || phase === "failed" || settling || redEyeModalOpen || card.classList.contains("played-out")) return;
+        if (failed || phase !== "playing" || settling || redEyeModalOpen || card.classList.contains("played-out")) return;
         if (!card.classList.contains("selected")) {
           const selectedCount = selectedHandNodes().length;
           if (selectedCount >= 5) return;
@@ -1174,7 +1305,7 @@
     redEyeOptionsPanel.addEventListener("click", (event) => {
       const button = event.target.closest("button[data-bet]");
       if (!button || !redEyeOptionsPanel.contains(button)) return;
-      if (failed || phase === "failed" || activeRedEyeBet || !redEyeUnlocked || redEyeUsedThisRound) return;
+      if (failed || phase !== "playing" || activeRedEyeBet || !redEyeUnlocked || redEyeUsedThisRound) return;
       const bet = redEyeBets[button.dataset.bet];
       if (!bet || !redEyeOfferIds.includes(bet.id)) return;
       activeRedEyeBet = bet;
@@ -1198,6 +1329,7 @@
     });
 
     failureRestart.addEventListener("click", resetDemoRun);
+    roundClearContinue.addEventListener("click", proceedToNextRound);
 
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && redEyeModalOpen) closeRedEyeModal();
