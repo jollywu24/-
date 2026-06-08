@@ -1,4 +1,27 @@
 (function (global) {
+  const CONTENT = global.GameContent
+    || (typeof module !== "undefined" && module.exports ? require("./game-content.js") : null);
+  const TILT_RULES = {
+    max: 160,
+    redEyeEnter: 100,
+    redEyeExit: 80,
+    redEyeMultiplier: 1.5,
+    clearRelief: {
+      normal: 25,
+      elite: 35,
+      boss: 50
+    }
+  };
+  const RED_EYE_GHOSTS = CONTENT?.RED_EYE_GHOST_IDS || {
+    bloodshotGlasses: "bloodshot_glasses",
+    redEyeIou: "red_eye_iou",
+    smallCardCourage: "small_card_courage",
+    rottenLifeInsurance: "rotten_life_insurance",
+    withdrawalRebound: "withdrawal_rebound"
+  };
+  const GHOST_RULES = CONTENT?.GHOST_RULES || {};
+  const RED_EYE_BET_RULES = CONTENT?.RED_EYE_BET_RULES || {};
+
   const SEQUENCES = {
     highCard: { id: "highCard", name: "高牌", base: 5, mult: 1, hype: 0, limit: 0, baseGrowth: 3, multGrowth: 0.2 },
     pair: { id: "pair", name: "对子", base: 10, mult: 2, hype: 2, limit: 0, baseGrowth: 5, multGrowth: 0.35 },
@@ -98,6 +121,7 @@
   function effectiveScoringCards(cards, sequence = null) {
     if (!cards.length) return [];
     const limitedCards = cards.filter(Boolean).slice(0, 5);
+    if (!limitedCards.every((card) => Number.isFinite(Number(cardRank(card, 0))))) return limitedCards;
     const activeSequence = sequence || evaluateIgnitionSequence(limitedCards, 5);
     if (["straight", "flush", "fullHouse", "straightFlush"].includes(activeSequence.id)) return limitedCards;
 
@@ -155,23 +179,18 @@
     return 0;
   }
 
-  function redEyeFixedHype(redEyeBet) {
-    return Math.max(0, Number(redEyeBet?.hypeCost ?? redEyeBet?.pressure ?? 0) || 0);
-  }
-
   function redEyeHypePreview(redEyeBet) {
     if (!redEyeBet) return null;
-    const fixed = redEyeFixedHype(redEyeBet);
     return {
-      min: fixed + 2,
-      max: fixed + 11
+      min: 2,
+      max: 11
     };
   }
 
   function calculateHypeBreakdown({ cards = [], sequence = null, redEyeBet = null, surgeCard = null }) {
-    const hypeBaseFromCards = cards.reduce((sum, card) => sum + cardHypeValue(card), 0);
+    const hypeBaseFromCards = redEyeBet ? 0 : cards.reduce((sum, card) => sum + cardHypeValue(card), 0);
     const hypeFromHandType = sequence?.hype || 0;
-    const hypeFromRedEyeBet = redEyeBet ? redEyeFixedHype(redEyeBet) : 0;
+    const hypeFromRedEyeBet = 0;
     const hypeFromSurgeCard = redEyeBet && surgeCard ? cardHypeValue(surgeCard) : 0;
     const hypeDeltaTotal = hypeBaseFromCards + hypeFromHandType + hypeFromRedEyeBet + hypeFromSurgeCard;
     const preview = redEyeBet && !surgeCard ? redEyeHypePreview(redEyeBet) : null;
@@ -180,6 +199,7 @@
       hypeFromHandType,
       hypeFromRedEyeBet,
       hypeFromSurgeCard,
+      hypeDelta: hypeDeltaTotal,
       hypeDeltaTotal,
       surgeCard: surgeCard || null,
       hypePreviewMin: preview ? hypeBaseFromCards + hypeFromHandType + preview.min : hypeDeltaTotal,
@@ -191,39 +211,95 @@
     const leveled = sequenceAtLevel(sequence, level);
     run.base += leveled.base;
     run.multiplier *= leveled.mult;
-    run.pressure += leveled.hype || 0;
     run.explosionLimit += leveled.limit;
     return leveled;
+  }
+
+  function recordMultiplierEvent(run, event) {
+    if (event.multBefore === event.multAfter) return;
+    run.multiplierEvents.push({
+      sourceId: event.sourceId || "",
+      sourceType: event.sourceType || "system",
+      jokerId: event.jokerId || "",
+      label: event.label,
+      operation: event.operation,
+      multBefore: event.multBefore,
+      multAfter: event.multAfter
+    });
   }
 
   function applySimpleJokers(run, jokers = []) {
     for (const joker of jokers) {
       const id = typeof joker === "string" ? joker : joker.id;
       if (id === "chip_plus_30") run.base += 30;
-      if (id === "mult_plus_2") run.multiplier += 2;
+      if (id === "mult_plus_2") {
+        const multBefore = run.multiplier;
+        run.multiplier += 2;
+        recordMultiplierEvent(run, {
+          sourceId: id,
+          sourceType: "joker",
+          jokerId: id,
+          label: "+2 倍率",
+          operation: "add",
+          multBefore,
+          multAfter: run.multiplier
+        });
+      }
       if (id === "redline_coupon") {
         run.pressure += 12;
+        const multBefore = run.multiplier;
         run.multiplier += 3;
+        recordMultiplierEvent(run, {
+          sourceId: id,
+          sourceType: "joker",
+          jokerId: id,
+          label: "+3 倍率",
+          operation: "add",
+          multBefore,
+          multAfter: run.multiplier
+        });
       }
       if (id === "coolant_pass") run.pressure = Math.max(0, run.pressure - 10);
-      if (id === "safe_margin") run.explosionLimit += 10;
     }
+  }
+
+  function updateRedEyeState(pressure, wasActive = false) {
+    if (wasActive) return pressure > TILT_RULES.redEyeExit;
+    return pressure >= TILT_RULES.redEyeEnter;
+  }
+
+  function roundTypeForIndex(roundIndex = 0) {
+    return ["normal", "elite", "boss"][Math.max(0, Math.floor(roundIndex)) % 3];
+  }
+
+  function tiltReliefForRound(roundIndex = 0) {
+    return TILT_RULES.clearRelief[roundTypeForIndex(roundIndex)];
   }
 
   function createRunState(state, baseProfit) {
     const owned = state.ownedJokers || [];
+    const startingPressure = state.pressure + state.baseDebt;
+    const redEyeActive = updateRedEyeState(startingPressure, Boolean(state.redEyeActive));
     return {
       base: baseProfit,
       multiplier: 1 + (owned.includes("red_heat_memory") ? (state.redHeatStacks || 0) : 0),
-      pressure: state.pressure + state.baseDebt,
-      explosionLimit: 100,
+      pressure: startingPressure,
+      explosionLimit: TILT_RULES.max,
       nextDebt: 0,
       fuses: 0,
       insurance: false,
       risk: 0,
       redlineTrips: 0,
       redHeatStacks: state.redHeatStacks || 0,
-      redlineWasActive: state.pressure + state.baseDebt >= 80,
+      bloodshotStacks: state.bloodshotStacks || 0,
+      pendingWithdrawalBonusStacks: state.pendingWithdrawalBonusStacks || 0,
+      withdrawalConsumedStacks: 0,
+      multiplierEvents: [],
+      insuranceTriggered: false,
+      abyssInsuranceAvailable: redEyeActive && owned.includes(RED_EYE_GHOSTS.rottenLifeInsurance),
+      redlineWasActive: redEyeActive,
+      redEyeActive,
+      redEyeMultiplierApplied: false,
       redlineRepeatLast: false,
       redlineRepeatUsed: false,
       redlinePowerDoubled: false
@@ -239,16 +315,40 @@
       messages.push(`热压曲柄：当前压力 ${Math.round(run.pressure)}，倍率 +${pressureBonus.toFixed(2)}`);
     }
 
-    const inRedline = run.pressure >= 80;
+    const inRedline = updateRedEyeState(run.pressure, run.redlineWasActive);
     if (inRedline && !run.redlineWasActive) {
       run.redlineTrips += 1;
+      if (owned.includes(RED_EYE_GHOSTS.bloodshotGlasses)) {
+        run.bloodshotStacks += GHOST_RULES[RED_EYE_GHOSTS.bloodshotGlasses]?.stacksPerRedEyeEntry || 1;
+        messages.push(`血丝眼镜：获得 1 层血丝（当前 ${run.bloodshotStacks}）`);
+      }
       if (owned.includes("redline_protocol")) {
+        const multBefore = run.multiplier;
         run.multiplier *= 2;
+        recordMultiplierEvent(run, {
+          sourceId: "redline_protocol",
+          sourceType: "joker",
+          jokerId: "redline_protocol",
+          label: "×2 倍率",
+          operation: "multiply",
+          multBefore,
+          multAfter: run.multiplier
+        });
         messages.push("红区协议：首次进红区，所有倍率 x2");
       }
       if (owned.includes("red_heat_memory")) {
         run.redHeatStacks += 1;
+        const multBefore = run.multiplier;
         run.multiplier += 1;
+        recordMultiplierEvent(run, {
+          sourceId: "red_heat_memory",
+          sourceType: "joker",
+          jokerId: "red_heat_memory",
+          label: "+1 倍率",
+          operation: "add",
+          multBefore,
+          multAfter: run.multiplier
+        });
         messages.push(`红温记忆：永久倍率 +1（当前 ${run.redHeatStacks}）`);
         if (typeof options.onPermanentStack === "function") options.onPermanentStack(1);
       }
@@ -263,18 +363,44 @@
     } else if (inRedline) {
       run.redlineWasActive = true;
     }
+    run.redEyeActive = inRedline;
 
-    if (owned.includes("furnace_critical") && run.pressure > 90 && !run.redlinePowerDoubled) {
+    if (inRedline && !run.redEyeMultiplierApplied) {
+      const bloodshotPerStack = GHOST_RULES[RED_EYE_GHOSTS.bloodshotGlasses]?.redEyeMultiplierPerStack || 0.1;
+      const bloodshotBonus = owned.includes(RED_EYE_GHOSTS.bloodshotGlasses) ? run.bloodshotStacks * bloodshotPerStack : 0;
+      const redEyeMultiplier = TILT_RULES.redEyeMultiplier + bloodshotBonus;
+      const multBefore = run.multiplier;
+      run.multiplier *= redEyeMultiplier;
+      recordMultiplierEvent(run, {
+        sourceId: bloodshotBonus > 0 ? RED_EYE_GHOSTS.bloodshotGlasses : "red-eye",
+        sourceType: bloodshotBonus > 0 ? "joker" : "redEye",
+        jokerId: bloodshotBonus > 0 ? RED_EYE_GHOSTS.bloodshotGlasses : "",
+        label: `×${redEyeMultiplier.toFixed(1)} 倍率`,
+        operation: "multiply",
+        multBefore,
+        multAfter: run.multiplier
+      });
+      run.redEyeMultiplierApplied = true;
+      messages.push(`红眼：本手倍率 x${(TILT_RULES.redEyeMultiplier + bloodshotBonus).toFixed(1)}`);
+    }
+
+    if (owned.includes("furnace_critical") && run.pressure >= TILT_RULES.redEyeEnter && !run.redlinePowerDoubled) {
       run.base *= 2;
       run.redlinePowerDoubled = true;
-      messages.push("熔炉临界：压力超过 90，基础功率 x2");
+      messages.push("熔炉临界：进入红眼，基础功率 x2");
     }
 
     return messages;
   }
 
   function handlePressureLimit(run) {
-    if (run.pressure <= run.explosionLimit) return "ok";
+    if (run.pressure < run.explosionLimit) return "ok";
+    if (run.abyssInsuranceAvailable) {
+      run.abyssInsuranceAvailable = false;
+      run.insuranceTriggered = true;
+      run.pressure = GHOST_RULES[RED_EYE_GHOSTS.rottenLifeInsurance]?.resetTilt || 120;
+      return "insurance";
+    }
     if (run.fuses > 0) {
       run.fuses -= 1;
       run.pressure = Math.max(0, run.explosionLimit - 6);
@@ -301,15 +427,73 @@
     return Math.max(0, Math.round(run.base * run.multiplier));
   }
 
-  function applyRedEyeBet(run, cards, redEyeBet) {
+  function applyRedEyeBet(run, cards, redEyeBet, surgeCard, ownedJokers = []) {
     if (!redEyeBet) return;
-    if (redEyeBet.id === "replay") {
+    const betRules = RED_EYE_BET_RULES[redEyeBet.id] || redEyeBet.rules || {};
+    for (let repeat = 0; repeat < (betRules.repeatScoringCards || 0); repeat += 1) {
       cards.forEach((card) => {
         run.base += Number(card?.chips || 0);
       });
     }
-    if (redEyeBet.id === "redDouble") run.multiplier *= 2;
-    if (redEyeBet.id === "borrow") run.base += 100;
+    if (betRules.handMultiplier) {
+      const multBefore = run.multiplier;
+      run.multiplier *= betRules.handMultiplier;
+      recordMultiplierEvent(run, {
+        sourceId: redEyeBet.id,
+        sourceType: "redEye",
+        label: `×${betRules.handMultiplier} 倍率`,
+        operation: "multiply",
+        multBefore,
+        multAfter: run.multiplier
+      });
+    }
+    if (betRules.chips) run.base += betRules.chips;
+    if (ownedJokers.includes(RED_EYE_GHOSTS.redEyeIou)) {
+      const iouMultiplier = GHOST_RULES[RED_EYE_GHOSTS.redEyeIou]?.betMultiplier || 1.25;
+      const multBefore = run.multiplier;
+      run.multiplier *= iouMultiplier;
+      recordMultiplierEvent(run, {
+        sourceId: RED_EYE_GHOSTS.redEyeIou,
+        sourceType: "joker",
+        jokerId: RED_EYE_GHOSTS.redEyeIou,
+        label: `×${iouMultiplier} 倍率`,
+        operation: "multiply",
+        multBefore,
+        multAfter: run.multiplier
+      });
+    }
+    const surgeValue = surgeCard ? cardHypeValue(surgeCard) : 0;
+    const smallCardLimit = GHOST_RULES[RED_EYE_GHOSTS.smallCardCourage]?.maxSurgeForMultiplier || 5;
+    if (ownedJokers.includes(RED_EYE_GHOSTS.smallCardCourage) && surgeValue <= smallCardLimit) {
+      const multBefore = run.multiplier;
+      run.multiplier += surgeValue;
+      recordMultiplierEvent(run, {
+        sourceId: surgeCard?.uid ?? surgeCard?.deckId ?? "surge",
+        sourceType: "surge",
+        jokerId: RED_EYE_GHOSTS.smallCardCourage,
+        label: `暗涌 +${surgeValue} 倍率`,
+        operation: "surge",
+        multBefore,
+        multAfter: run.multiplier
+      });
+    }
+    if (ownedJokers.includes(RED_EYE_GHOSTS.withdrawalRebound) && run.pendingWithdrawalBonusStacks > 0) {
+      run.withdrawalConsumedStacks = run.pendingWithdrawalBonusStacks;
+      const multiplierPerStack = GHOST_RULES[RED_EYE_GHOSTS.withdrawalRebound]?.multiplierPerStack || 1.3;
+      const withdrawalMultiplier = Math.pow(multiplierPerStack, run.pendingWithdrawalBonusStacks);
+      const multBefore = run.multiplier;
+      run.multiplier *= withdrawalMultiplier;
+      recordMultiplierEvent(run, {
+        sourceId: RED_EYE_GHOSTS.withdrawalRebound,
+        sourceType: "joker",
+        jokerId: RED_EYE_GHOSTS.withdrawalRebound,
+        label: `×${withdrawalMultiplier.toFixed(2)} 倍率`,
+        operation: "multiply",
+        multBefore,
+        multAfter: run.multiplier
+      });
+      run.pendingWithdrawalBonusStacks = 0;
+    }
   }
 
   function createStandardDeck() {
@@ -334,51 +518,79 @@
         base: 0,
         pressure: state.pressure + state.baseDebt,
         multiplier: 1,
-        limit: 100,
+        limit: TILT_RULES.max,
         sequence: null,
         hypeBaseFromCards: 0,
         hypeFromHandType: 0,
         hypeFromRedEyeBet: 0,
         hypeFromSurgeCard: 0,
+        hypeDelta: 0,
         hypeDeltaTotal: 0,
+        scoringCardIds: [],
         surgeCard: null,
+        multiplierEvents: [],
         hypePreviewMin: 0,
         hypePreviewMax: 0,
         riskText: "未装入"
       };
     }
 
-    const activeCards = slots.filter(Boolean);
+    const activeCards = slots.filter(Boolean).slice(0, slotCount);
     const run = createRunState(state, baseProfit);
-    const sequence = evaluateIgnitionSequence(slots, slotCount);
+    const sequence = evaluateIgnitionSequence(activeCards, slotCount);
+    const scoringCards = effectiveScoringCards(activeCards, sequence);
+    const scoringCardIds = scoringCards
+      .map((card) => card.uid ?? card.deckId ?? card.id)
+      .filter((id) => id !== undefined && id !== null);
     const sequenceLevel = state.handLevels?.[sequence.id] || 1;
     const leveledSequence = applyIgnitionSequence(run, sequence, sequenceLevel);
     applySimpleJokers(run, state.ownedJokers || []);
     applyRedHeatCore(run, { ownedJokers: state.ownedJokers || [] });
     if (typeof state.bossRule?.applyStart === "function") {
-      state.bossRule.applyStart(run, slots);
+      state.bossRule.applyStart(run, activeCards);
       applyRedHeatCore(run, { ownedJokers: state.ownedJokers || [] });
     }
 
     let blown = false;
-    for (const module of slots) {
+    for (const module of scoringCards) {
       if (!module) continue;
+      const multBefore = run.multiplier;
       resolveModuleFn(module, run, { preview: true });
+      recordMultiplierEvent(run, {
+        sourceId: module.uid ?? module.deckId ?? module.id,
+        sourceType: "card",
+        label: `${run.multiplier >= multBefore ? "+" : ""}${(run.multiplier - multBefore).toFixed(2)} 倍率`,
+        operation: "add",
+        multBefore,
+        multAfter: run.multiplier
+      });
       if (typeof state.bossRule?.applyModule === "function") state.bossRule.applyModule(run, module);
       applyRedHeatCore(run, { ownedJokers: state.ownedJokers || [] });
       if (handlePressureLimit(run) === "blown") blown = true;
     }
 
-    applyRedEyeBet(run, activeCards, redEyeBet);
+    applyRedEyeBet(run, scoringCards, redEyeBet, surgeCard, state.ownedJokers || []);
     const hypeBreakdown = calculateHypeBreakdown({
-      cards: activeCards,
+      cards: scoringCards,
       sequence: leveledSequence,
       redEyeBet,
       surgeCard
     });
-    run.pressure += hypeBreakdown.hypeFromRedEyeBet + hypeBreakdown.hypeFromSurgeCard;
+    const bloodshotHype = state.ownedJokers?.includes(RED_EYE_GHOSTS.bloodshotGlasses) && !state.redEyeActive
+      ? GHOST_RULES[RED_EYE_GHOSTS.bloodshotGlasses]?.normalHype || 3
+      : 0;
+    const redEyeIouHype = redEyeBet && state.ownedJokers?.includes(RED_EYE_GHOSTS.redEyeIou)
+      ? GHOST_RULES[RED_EYE_GHOSTS.redEyeIou]?.surgeHype || 3
+      : 0;
+    hypeBreakdown.hypeFromBloodshotGlasses = bloodshotHype;
+    hypeBreakdown.hypeFromRedEyeIou = redEyeIouHype;
+    hypeBreakdown.hypeDelta += bloodshotHype + redEyeIouHype;
+    hypeBreakdown.hypeDeltaTotal += bloodshotHype + redEyeIouHype;
+    run.pressure += hypeBreakdown.hypeDeltaTotal;
+    applyRedHeatCore(run, { ownedJokers: state.ownedJokers || [] });
+    if (handlePressureLimit(run) === "blown") blown = true;
 
-    const lastModule = [...slots].reverse().find(Boolean);
+    const lastModule = [...scoringCards].reverse().find(Boolean);
     if (!blown && run.redlineRepeatLast && !run.redlineRepeatUsed && lastModule) {
       run.redlineRepeatUsed = true;
       resolveModuleFn(lastModule, run, { preview: true });
@@ -407,12 +619,24 @@
       multiplier: run.multiplier,
       limit: run.explosionLimit,
       sequence: leveledSequence,
+      scoringCardIds,
+      bloodshotStacks: run.bloodshotStacks,
+      withdrawalConsumedStacks: run.withdrawalConsumedStacks,
+      insuranceTriggered: run.insuranceTriggered,
+      multiplierEvents: run.multiplierEvents.map((event) => ({
+        ...event,
+        base: run.base,
+        scoreBefore: Math.max(0, Math.round(run.base * event.multBefore)),
+        scoreAfter: Math.max(0, Math.round(run.base * event.multAfter))
+      })),
       ...hypeBreakdown,
       riskText
     };
   }
 
   const api = {
+    TILT_RULES,
+    RED_EYE_GHOSTS,
     SEQUENCES,
     STANDARD_RANKS,
     STANDARD_PHASES,
@@ -426,6 +650,9 @@
     applyIgnitionSequence,
     createStandardDeck,
     applySimpleJokers,
+    updateRedEyeState,
+    roundTypeForIndex,
+    tiltReliefForRound,
     applyRedHeatCore,
     createRunState,
     resolveModule,

@@ -58,17 +58,17 @@
         </section>
 
         <section class="tilt-meter">
-          <div class="section-title">上头值 <strong>0%</strong></div>
-          <div class="eye-meter" aria-label="上头值 0%">
+          <div class="section-title">上头值 <strong>0 / 160</strong></div>
+          <div class="eye-meter" aria-label="上头值 0 / 160">
             <div class="eye-ring"></div>
             <div class="eye-core"></div>
             <div class="meter-hand"></div>
           </div>
           <ul class="tilt-labels">
-            <li><span>冷手</span><em>0-39%</em></li>
-            <li><span>热手</span><em>40-69%</em></li>
-            <li class="hot"><span>红眼</span><em>70-94%</em></li>
-            <li><span>鬼压桌</span><em>95-99%</em></li>
+            <li><span>冷手</span><em>0-39</em></li>
+            <li><span>热手</span><em>40-99</em></li>
+            <li class="hot"><span>红眼</span><em>100进 / 80退</em></li>
+            <li><span>鬼压桌</span><em>140-159</em></li>
           </ul>
         </section>
 
@@ -80,39 +80,14 @@
 
       <section class="joker-zone">
         <div class="zone-title"><span></span><strong>赌鬼</strong><span></span></div>
-        <div class="joker-row">
-          <article class="joker-card rare-orange">
-            <div class="portrait dealer"></div>
-            <h2>诡笑庄家</h2>
-            <p>每回合第一次<br>出牌 +10 筹码</p>
-            <div class="stars">★◇◇◇◇</div>
-          </article>
-          <article class="joker-card rare-orange">
-            <div class="portrait debtor"></div>
-            <h2>借命赌徒</h2>
-            <p>上头值每增加10%<br>倍率 +2</p>
-            <div class="stars">★★◇◇◇</div>
-          </article>
-          <article class="joker-card rare-blue">
-            <div class="portrait lady"></div>
-            <h2>命运荷官</h2>
-            <p>换牌时有20%几率<br>不消耗次数</p>
-            <div class="stars">★★★◇◇</div>
-          </article>
-          <article class="joker-card rare-orange">
-            <div class="portrait collector"></div>
-            <h2>血债收账人</h2>
-            <p>出同花顺 / 炸弹<br>+30 筹码</p>
-            <div class="stars">★★◇◇◇</div>
-          </article>
-          <article class="joker-card rare-purple">
-            <div class="portrait reaper"></div>
-            <h2>厄运撒票者</h2>
-            <p>换牌时有15%几率<br>获得 +1 次换牌</p>
-            <div class="stars">★★★★◇</div>
-          </article>
+        <div class="joker-row" aria-label="当前没有赌鬼牌"></div>
+        <div class="joker-count">0 / 5</div>
+        <div class="owned-ghost-tip" aria-live="polite" aria-hidden="true">
+          <h3></h3>
+          <p class="owned-ghost-effect"></p>
+          <dl class="owned-ghost-terms"></dl>
+          <div><span></span><strong></strong></div>
         </div>
-        <div class="joker-count">5 / 5</div>
       </section>
 
       <section class="table-zone">
@@ -121,6 +96,10 @@
       </section>
 
       <section class="hand-zone" aria-label="底部手牌区">
+        <div class="selected-card-tip" aria-live="polite" aria-hidden="true">
+          <strong></strong>
+          <span></span>
+        </div>
         <div class="hand-fan">
           <article class="playing-card hand-card black c1">
             <div class="corner top">A<span>♠</span></div>
@@ -166,6 +145,34 @@
         <div class="hand-count">8 / 8</div>
       </section>
 
+      <section class="shop-stage" aria-hidden="true">
+        <div class="shop-frame">
+          <header class="shop-title">
+            <h2>商店</h2>
+            <p>购买赌鬼，强化你的赌局</p>
+          </header>
+          <div class="shop-body">
+            <aside class="shop-actions" aria-label="商店操作">
+              <button class="shop-next-button" type="button">下一局</button>
+              <button class="shop-reroll-button" type="button">
+                <strong>重掷赌鬼</strong>
+                <span>花费 <b>5</b></span>
+              </button>
+              <div class="shop-reroll-note">仅刷新赌鬼</div>
+              <div class="shop-message" aria-live="polite"></div>
+            </aside>
+            <div class="shop-shelves">
+              <section class="shop-shelf shop-ghost-shelf" aria-label="待售赌鬼">
+                <div class="shop-ghost-offers"></div>
+              </section>
+              <section class="shop-shelf shop-pack-shelf" aria-label="待售卡包">
+                <div class="shop-pack-offers"></div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <aside class="right-panel">
         <section class="deck-area">
           <div class="coin-pile" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -190,17 +197,31 @@
           <div class="closed-eye" aria-hidden="true"></div>
           <h2>红眼赌注</h2>
           <strong>未开启</strong>
+          <span class="red-eye-entry-detail">还差 100 上头</span>
           <span class="lock-symbol">▣</span>
           <button class="red-eye-status-icon" type="button" aria-label="查看红眼赌注">◉</button>
           <div class="red-eye-tooltip" role="tooltip">尚未选择红眼赌注。</div>
         </section>
       </aside>
 
+      <div class="global-red-flash" aria-hidden="true"></div>
+      <div class="art-vfx-layer" aria-hidden="true">
+        <img class="art-vfx art-vfx-red-eye" src="../art/vfx/red-eye-awakening.png" alt="" />
+        <img class="art-vfx art-vfx-wager-seal" src="../art/vfx/red-eye-wager-seal.png" alt="" />
+      </div>
+      <div class="red-eye-announcement" aria-live="polite">
+        <strong>红眼</strong>
+        <span>红眼赌注已解锁</span>
+      </div>
+
       <section class="red-eye-modal" aria-hidden="true">
         <div class="red-eye-modal-card">
+          <button class="red-eye-modal-close" type="button" aria-label="关闭红眼赌注">×</button>
+          <div class="red-eye-modal-eye" aria-hidden="true"></div>
           <h2>红眼赌注</h2>
-          <p>选择一项绑定下一次摊牌，也可以稍后再押。</p>
+          <p>上头值已达红眼状态，可选择一次赌注以强化当前对局</p>
           <div class="red-eye-options"></div>
+          <div class="red-eye-modal-note">只能选择其中一项，选择后生效</div>
         </div>
       </section>
 
@@ -218,7 +239,7 @@
             <span>总计收益</span>
             <strong>$0</strong>
           </div>
-          <button class="round-clear-continue" type="button" disabled>进入下一局</button>
+          <button class="round-clear-continue" type="button" disabled>领取收益</button>
         </div>
       </section>
 
@@ -236,6 +257,11 @@
     </main>
   </div>
 
+  <script src="./game-content.js"></script>
+  <script src="./runtime-state.js"></script>
+  <script src="./round-rules.js"></script>
+  <script src="./animations.js"></script>
+  <script src="./game-dom.js"></script>
   <script src="./logic-pure.js"></script>
   <script src="./app.js?v=round-clear-reward"></script>
 </body>

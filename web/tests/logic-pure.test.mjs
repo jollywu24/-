@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import pkg from '../logic-pure.js';
 
-const { evaluateIgnitionSequence, effectiveScoringCards, sequenceAtLevel, applySimpleJokers, applyRedHeatCore, createRunState, createRng, createStandardDeck, simulatePreview, cardHypeValue } = pkg;
+const { TILT_RULES, RED_EYE_GHOSTS, evaluateIgnitionSequence, effectiveScoringCards, sequenceAtLevel, applySimpleJokers, applyRedHeatCore, createRunState, createRng, createStandardDeck, simulatePreview, cardHypeValue, updateRedEyeState, tiltReliefForRound } = pkg;
 
 function card(rank, phase = 'kinetic') {
   return { chips: rank, phase };
@@ -11,6 +11,7 @@ function card(rank, phase = 'kinetic') {
 function playableCard(rank, phase = 'kinetic') {
   const label = rank === 14 ? 'A' : rank === 13 ? 'K' : rank === 12 ? 'Q' : rank === 11 ? 'J' : String(rank);
   return {
+    uid: `${phase}-${rank}`,
     rank,
     rankLabel: label,
     chips: rank,
@@ -18,7 +19,6 @@ function playableCard(rank, phase = 'kinetic') {
     trigger: 'ON_RESOLVE',
     preview(run) {
       run.base += rank;
-      run.pressure += cardHypeValue(this);
     },
   };
 }
@@ -70,9 +70,8 @@ test('simulatePreview calculates deterministic hype from effective cards plus ha
     playableCard(5, 'toxic'),
   ];
   const sequence = evaluateIgnitionSequence(allCards, 5);
-  const effectiveCards = effectiveScoringCards(allCards, sequence);
   const out = simulatePreview({
-    slots: effectiveCards,
+    slots: allCards,
     state: { pressure: 0, baseDebt: 0 },
     baseProfit: 0,
     resolveModuleFn: (m, run, options) => {
@@ -81,7 +80,8 @@ test('simulatePreview calculates deterministic hype from effective cards plus ha
   });
 
   assert.equal(sequence.name, '两对');
-  assert.equal(effectiveCards.length, 4);
+  assert.equal(out.scoringCardIds.length, 4);
+  assert.equal(out.scoringCardIds.includes('toxic-5'), false);
   assert.equal(out.hypeBaseFromCards, 36);
   assert.equal(out.hypeFromHandType, 4);
   assert.equal(out.hypeDeltaTotal, 40);
@@ -105,7 +105,7 @@ test('straight hype stays easy to count for low and high straights', () => {
   ];
 
   const low = simulatePreview({
-    slots: effectiveScoringCards(lowStraight, evaluateIgnitionSequence(lowStraight, 5)),
+    slots: lowStraight,
     state: { pressure: 0, baseDebt: 0 },
     baseProfit: 0,
     resolveModuleFn: (m, run, options) => {
@@ -113,7 +113,7 @@ test('straight hype stays easy to count for low and high straights', () => {
     },
   });
   const high = simulatePreview({
-    slots: effectiveScoringCards(highStraight, evaluateIgnitionSequence(highStraight, 5)),
+    slots: highStraight,
     state: { pressure: 0, baseDebt: 0 },
     baseProfit: 0,
     resolveModuleFn: (m, run, options) => {
@@ -129,7 +129,7 @@ test('straight hype stays easy to count for low and high straights', () => {
   assert.equal(high.pressure, 59);
 });
 
-test('red eye bet adds fixed hype and one surge card without exact preview odds', () => {
+test('red eye bet replaces effective-card hype with one surge card', () => {
   const cards = [
     playableCard(2, 'kinetic'),
     playableCard(3, 'pulse'),
@@ -139,7 +139,7 @@ test('red eye bet adds fixed hype and one surge card without exact preview odds'
   ];
   const redDouble = { id: 'redDouble', hypeCost: 12 };
   const preview = simulatePreview({
-    slots: effectiveScoringCards(cards, evaluateIgnitionSequence(cards, 5)),
+    slots: cards,
     state: { pressure: 0, baseDebt: 0 },
     baseProfit: 0,
     redEyeBet: redDouble,
@@ -148,7 +148,7 @@ test('red eye bet adds fixed hype and one surge card without exact preview odds'
     },
   });
   const resolved = simulatePreview({
-    slots: effectiveScoringCards(cards, evaluateIgnitionSequence(cards, 5)),
+    slots: cards,
     state: { pressure: 0, baseDebt: 0 },
     baseProfit: 0,
     redEyeBet: redDouble,
@@ -158,12 +158,13 @@ test('red eye bet adds fixed hype and one surge card without exact preview odds'
     },
   });
 
-  assert.equal(preview.hypeDeltaTotal, 40);
-  assert.equal(preview.hypePreviewMin, 42);
-  assert.equal(preview.hypePreviewMax, 51);
-  assert.equal(resolved.hypeFromRedEyeBet, 12);
+  assert.equal(preview.hypeBaseFromCards, 0);
+  assert.equal(preview.hypeDeltaTotal, 8);
+  assert.equal(preview.hypePreviewMin, 10);
+  assert.equal(preview.hypePreviewMax, 19);
+  assert.equal(resolved.hypeFromRedEyeBet, 0);
   assert.equal(resolved.hypeFromSurgeCard, 10);
-  assert.equal(resolved.pressure, 50);
+  assert.equal(resolved.pressure, 18);
 });
 
 test('createRng returns repeatable sequences for the same seed', () => {
@@ -199,16 +200,29 @@ test('single 10-point base card previews as card chips plus high-card base', () 
   assert.equal(out.profit, Math.round(out.base * out.multiplier));
 });
 
-test('simulatePreview marks blown risk when pressure exceeds limit', () => {
+test('simulatePreview marks blown risk when pressure exceeds 160', () => {
   const slots = [{ phase: 'kinetic', trigger: 'ON_RESOLVE', preview: (run) => { run.pressure += 10; } }, { phase: 'pulse', trigger: 'ON_RESOLVE', preview: (run) => { run.pressure += 10; } }];
   const out = simulatePreview({
     slots,
-    state: { pressure: 95, baseDebt: 0 },
+    state: { pressure: 155, baseDebt: 0 },
     baseProfit: 100,
     resolveModuleFn: (m, run, options) => {
       if (options?.preview) m.preview(run);
     },
   });
+  assert.equal(out.riskText, '爆炸');
+});
+
+test('simulatePreview marks blown risk when final hype reaches exactly 160', () => {
+  const out = simulatePreview({
+    slots: [playableCard(10, 'pulse')],
+    state: { pressure: 150, baseDebt: 0 },
+    baseProfit: 0,
+    resolveModuleFn: (m, run, options) => {
+      if (options?.preview) m.preview(run);
+    },
+  });
+  assert.equal(out.pressure, 160);
   assert.equal(out.riskText, '爆炸');
 });
 
@@ -279,17 +293,17 @@ test('red heat converts current pressure into additive multiplier', () => {
   assert.equal(run.multiplier, 7);
 });
 
-test('shop jokers apply core Balatro-style bonuses before red heat', () => {
+test('shop jokers apply core Balatro-style bonuses without raising the 160 cap', () => {
   const run = createRunState({ pressure: 20, baseDebt: 0, redHeatStacks: 0 }, 50);
-  applySimpleJokers(run, ['chip_plus_30', 'mult_plus_2', 'safe_margin']);
+  applySimpleJokers(run, ['chip_plus_30', 'mult_plus_2']);
   assert.equal(run.base, 80);
   assert.equal(run.multiplier, 3);
-  assert.equal(run.explosionLimit, 110);
+  assert.equal(run.explosionLimit, 160);
 });
 
 test('red heat doubles multiplier and grants permanent stack when entering redline', () => {
-  const run = createRunState({ pressure: 70, baseDebt: 0, redHeatStacks: 0 }, 100);
-  run.pressure = 80;
+  const run = createRunState({ pressure: 90, baseDebt: 0, redHeatStacks: 0 }, 100);
+  run.pressure = 100;
   let stacks = 0;
   const messages = applyRedHeatCore(run, {
     ownedJokers: ['thermal_crank', 'redline_protocol', 'red_heat_memory', 'echo_overload'],
@@ -304,7 +318,7 @@ test('red heat doubles multiplier and grants permanent stack when entering redli
 
 test('red heat doubles base power once above pressure 90', () => {
   const run = createRunState({ pressure: 0, baseDebt: 0, redHeatStacks: 0 }, 100);
-  run.pressure = 91;
+  run.pressure = 100;
   applyRedHeatCore(run, { ownedJokers: ['furnace_critical'] });
   assert.equal(run.base, 200);
   applyRedHeatCore(run, { ownedJokers: ['furnace_critical'] });
@@ -313,7 +327,7 @@ test('red heat doubles base power once above pressure 90', () => {
 
 test('simulatePreview repeats the last module after first redline entry', () => {
   const slots = [
-    { phase: 'kinetic', trigger: 'ON_RESOLVE', preview: (run) => { run.pressure += 80; } },
+    { phase: 'kinetic', trigger: 'ON_RESOLVE', preview: (run) => { run.pressure += 100; } },
     { phase: 'pulse', trigger: 'ON_RESOLVE', preview: (run) => { run.base += 10; } },
   ];
   const out = simulatePreview({
@@ -325,6 +339,208 @@ test('simulatePreview repeats the last module after first redline entry', () => 
     },
   });
   assert.equal(out.base, 100 + out.sequence.base + 20);
+});
+
+test('red eye uses 100 enter and 80 exit hysteresis', () => {
+  assert.equal(updateRedEyeState(99, false), false);
+  assert.equal(updateRedEyeState(100, false), true);
+  assert.equal(updateRedEyeState(81, true), true);
+  assert.equal(updateRedEyeState(80, true), false);
+});
+
+test('red eye multiplies the current hand by 1.5 once', () => {
+  const run = createRunState({ pressure: 100, baseDebt: 0, redEyeActive: true, redHeatStacks: 0 }, 100);
+  applyRedHeatCore(run);
+  assert.equal(run.multiplier, TILT_RULES.redEyeMultiplier);
+  applyRedHeatCore(run);
+  assert.equal(run.multiplier, TILT_RULES.redEyeMultiplier);
+});
+
+test('crossing 100 applies the red eye multiplier to that hand', () => {
+  const out = simulatePreview({
+    slots: [playableCard(10, 'pulse')],
+    state: { pressure: 90, baseDebt: 0, redEyeActive: false },
+    baseProfit: 0,
+    resolveModuleFn: (m, run, options) => {
+      if (options?.preview) m.preview(run);
+    },
+  });
+  assert.equal(out.pressure, 100);
+  assert.equal(out.multiplier, TILT_RULES.redEyeMultiplier);
+  assert.equal(out.profit, Math.round(out.base * TILT_RULES.redEyeMultiplier));
+});
+
+test('round clear relief follows normal elite boss order', () => {
+  assert.deepEqual([0, 1, 2, 3].map(tiltReliefForRound), [25, 35, 50, 25]);
+});
+
+test('血丝眼镜 gives normal hands +3 hype and grows red eye multiplier on entry', () => {
+  const out = simulatePreview({
+    slots: [playableCard(10, 'pulse')],
+    state: {
+      pressure: 87,
+      baseDebt: 0,
+      redEyeActive: false,
+      bloodshotStacks: 3,
+      ownedJokers: [RED_EYE_GHOSTS.bloodshotGlasses],
+    },
+    baseProfit: 0,
+    resolveModuleFn: (m, run, options) => {
+      if (options?.preview) m.preview(run);
+    },
+  });
+  assert.equal(out.hypeFromBloodshotGlasses, 3);
+  assert.equal(out.pressure, 100);
+  assert.equal(out.bloodshotStacks, 4);
+  assert.equal(out.multiplier, 1.9);
+  const event = out.multiplierEvents.find((item) => item.jokerId === RED_EYE_GHOSTS.bloodshotGlasses);
+  assert.equal(event.label, '×1.9 倍率');
+  assert.equal(event.operation, 'multiply');
+  assert.equal(event.sourceType, 'joker');
+  assert.equal(event.multBefore, 1);
+  assert.equal(event.multAfter, 1.9);
+  assert.equal(event.scoreAfter, Math.round(out.base * 1.9));
+});
+
+test('红眼借据 strengthens a red eye bet and adds 3 hype after surge', () => {
+  const base = simulatePreview({
+    slots: [playableCard(10, 'pulse')],
+    state: { pressure: 100, baseDebt: 0, redEyeActive: true },
+    baseProfit: 0,
+    redEyeBet: { id: 'borrow' },
+    surgeCard: playableCard(9, 'toxic'),
+    resolveModuleFn: (m, run, options) => {
+      if (options?.preview) m.preview(run);
+    },
+  });
+  const withIou = simulatePreview({
+    slots: [playableCard(10, 'pulse')],
+    state: { pressure: 100, baseDebt: 0, redEyeActive: true, ownedJokers: [RED_EYE_GHOSTS.redEyeIou] },
+    baseProfit: 0,
+    redEyeBet: { id: 'borrow' },
+    surgeCard: playableCard(9, 'toxic'),
+    resolveModuleFn: (m, run, options) => {
+      if (options?.preview) m.preview(run);
+    },
+  });
+  assert.equal(withIou.hypeFromRedEyeIou, 3);
+  assert.equal(withIou.pressure, base.pressure + 3);
+  assert.equal(withIou.multiplier, base.multiplier * 1.25);
+  assert.ok(withIou.multiplierEvents.some((event) => event.label === '×1.25 倍率' && event.operation === 'multiply'));
+});
+
+test('小牌壮胆 adds low surge value to multiplier but ignores high surge', () => {
+  const state = { pressure: 100, baseDebt: 0, redEyeActive: true, ownedJokers: [RED_EYE_GHOSTS.smallCardCourage] };
+  const low = simulatePreview({
+    slots: [playableCard(10, 'pulse')],
+    state,
+    baseProfit: 0,
+    redEyeBet: { id: 'borrow' },
+    surgeCard: playableCard(3, 'toxic'),
+    resolveModuleFn: (m, run, options) => {
+      if (options?.preview) m.preview(run);
+    },
+  });
+  const high = simulatePreview({
+    slots: [playableCard(10, 'pulse')],
+    state,
+    baseProfit: 0,
+    redEyeBet: { id: 'borrow' },
+    surgeCard: playableCard(9, 'toxic'),
+    resolveModuleFn: (m, run, options) => {
+      if (options?.preview) m.preview(run);
+    },
+  });
+  assert.equal(low.multiplier, 4.5);
+  assert.equal(high.multiplier, 1.5);
+  assert.ok(low.multiplierEvents.some((event) => event.label === '暗涌 +3 倍率' && event.operation === 'surge' && event.sourceType === 'surge'));
+  assert.equal(high.multiplierEvents.some((event) => event.jokerId === RED_EYE_GHOSTS.smallCardCourage), false);
+});
+
+test('烂命保险 prevents a red eye bust, sets hype to 120, and reports destruction', () => {
+  const out = simulatePreview({
+    slots: [playableCard(10, 'pulse')],
+    state: {
+      pressure: 155,
+      baseDebt: 0,
+      redEyeActive: true,
+      ownedJokers: [RED_EYE_GHOSTS.rottenLifeInsurance],
+    },
+    baseProfit: 0,
+    resolveModuleFn: (m, run, options) => {
+      if (options?.preview) m.preview(run);
+    },
+  });
+  assert.equal(out.pressure, 120);
+  assert.equal(out.insuranceTriggered, true);
+  assert.notEqual(out.riskText, '爆炸');
+});
+
+test('戒断反弹 consumes all pending stacks on the first red eye bet', () => {
+  const out = simulatePreview({
+    slots: [playableCard(10, 'pulse')],
+    state: {
+      pressure: 100,
+      baseDebt: 0,
+      redEyeActive: true,
+      pendingWithdrawalBonusStacks: 4,
+      ownedJokers: [RED_EYE_GHOSTS.withdrawalRebound],
+    },
+    baseProfit: 0,
+    redEyeBet: { id: 'borrow' },
+    surgeCard: playableCard(9, 'toxic'),
+    resolveModuleFn: (m, run, options) => {
+      if (options?.preview) m.preview(run);
+    },
+  });
+  assert.equal(out.withdrawalConsumedStacks, 4);
+  assert.ok(Math.abs(out.multiplier - 1.5 * Math.pow(1.3, 4)) < 1e-10);
+  assert.ok(out.multiplierEvents.some((event) => event.label === '×2.86 倍率' && event.operation === 'multiply'));
+});
+
+test('multiplier animation steps preserve trigger order and score continuity', () => {
+  const out = simulatePreview({
+    slots: [playableCard(10, 'pulse')],
+    state: {
+      pressure: 100,
+      baseDebt: 0,
+      redEyeActive: true,
+      pendingWithdrawalBonusStacks: 1,
+      ownedJokers: [
+        RED_EYE_GHOSTS.redEyeIou,
+        RED_EYE_GHOSTS.smallCardCourage,
+        RED_EYE_GHOSTS.withdrawalRebound,
+      ],
+    },
+    baseProfit: 0,
+    redEyeBet: { id: 'redDouble' },
+    surgeCard: playableCard(3, 'toxic'),
+    resolveModuleFn: (m, run, options) => {
+      if (options?.preview) m.preview(run);
+    },
+  });
+
+  assert.deepEqual(out.multiplierEvents.map((event) => event.label), [
+    '×1.5 倍率',
+    '×2 倍率',
+    '×1.25 倍率',
+    '暗涌 +3 倍率',
+    '×1.30 倍率',
+  ]);
+  assert.deepEqual(out.multiplierEvents.map((event) => event.operation), [
+    'multiply',
+    'multiply',
+    'multiply',
+    'surge',
+    'multiply',
+  ]);
+  out.multiplierEvents.forEach((event, index) => {
+    assert.equal(event.base, out.base);
+    assert.equal(event.scoreBefore, Math.round(out.base * event.multBefore));
+    assert.equal(event.scoreAfter, Math.round(out.base * event.multAfter));
+    if (index > 0) assert.equal(event.multBefore, out.multiplierEvents[index - 1].multAfter);
+  });
+  assert.equal(out.multiplierEvents.at(-1).multAfter, out.multiplier);
 });
 
 test('simulatePreview applies boss blind negative rules', () => {
@@ -348,5 +564,5 @@ test('simulatePreview applies boss blind negative rules', () => {
       if (options?.preview) m.preview(run);
     },
   });
-  assert.equal(out.pressure, 10);
+  assert.equal(out.pressure, 21);
 });
