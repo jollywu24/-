@@ -10,6 +10,7 @@
 <body>
   <div class="viewport" aria-label="1600x900 fixed game viewport">
     <main class="game-board">
+      <div class="game-table-art" aria-hidden="true"></div>
       <aside class="left-panel frame">
         <header class="brand-block">
           <i class="cross-mark" aria-hidden="true"></i>
@@ -60,6 +61,7 @@
         <section class="tilt-meter">
           <div class="section-title">上头值 <strong>0 / 160</strong></div>
           <div class="eye-meter" aria-label="上头值 0 / 160">
+            <div class="stress-eye-art" aria-hidden="true"></div>
             <div class="eye-ring"></div>
             <div class="eye-core"></div>
             <div class="meter-hand"></div>
@@ -193,6 +195,7 @@
         </section>
 
         <section class="red-eye-entry">
+          <div class="red-eye-panel-art" aria-hidden="true"></div>
           <div class="lock-chain" aria-hidden="true"></div>
           <div class="closed-eye" aria-hidden="true"></div>
           <h2>红眼赌注</h2>
@@ -261,6 +264,9 @@
   <script src="./runtime-state.js"></script>
   <script src="./round-rules.js"></script>
   <script src="./animations.js"></script>
+  <script src="./asset-map.js"></script>
+  <script src="./safe-image.js"></script>
+  <script src="./surge-card-view.js"></script>
   <script src="./game-dom.js"></script>
   <script src="./logic-pure.js"></script>
   <script src="./app.js?v=round-clear-reward"></script>

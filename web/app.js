@@ -15,6 +15,9 @@
   const content = window.GameContent;
   const roundRules = window.GameRoundRules;
   const animation = window.GameAnimations;
+  const assets = window.GameAssets;
+  const safeImage = window.SafeImage;
+  const surgeCardView = window.SurgeCardView;
   const redEyeBets = content.RED_EYE_BETS;
   const shopGhostPool = content.GHOSTS;
   const shopPackPool = content.SHOP_PACKS;
@@ -51,11 +54,11 @@
   });
 
   const {
-    board, handCards, playedCards, showdownButton, discardButton, targetScoreValue, scoreValue,
+    board, gameTableArt, handCards, playedCards, showdownButton, discardButton, targetScoreValue, scoreValue,
     showdownCount, discardCount, handCount, handZone, selectedCardTip, handName, chipsChip,
-    multChip, chipsValue, multValue, stakeValue, tiltSection, tiltValue, meterHand, deckCount,
-    deckStack, jokerZone, jokerRow, jokerCount, ownedGhostTip, redEyeModal, redEyeModalClose,
-    redEyeOptionsPanel, redEyeEntry, redEyeStateText, redEyeEntryDetail, redEyeIcon, redEyeTooltip,
+    multChip, chipsValue, multValue, stakeValue, tiltSection, tiltValue, meterHand, stressEyeArt, deckCount,
+    deckStack, deckCards, jokerZone, jokerRow, jokerCount, ownedGhostTip, redEyeModal, redEyeModalClose,
+    redEyeOptionsPanel, redEyeEntry, redEyePanelArt, redEyeStateText, redEyeEntryDetail, redEyeIcon, redEyeTooltip,
     failureOverlay, failureCard, failureTitle, failureSubtitle, failureStats, failureRestart,
     roundClearOverlay, roundClearCurrent, roundClearRewards, roundClearTotal, roundClearContinue,
     shopStage, shopGhostOffers, shopPackOffers, shopNextButton, shopRerollButton, shopMessage,
@@ -84,6 +87,87 @@
 
   function formatNumber(value) {
     return Math.round(value).toLocaleString("en-US");
+  }
+
+  function artImage(host) {
+    return host?.querySelector("img[data-safe-image]") || null;
+  }
+
+  function mountArtAssets() {
+    safeImage?.mount(gameTableArt, {
+      src: assets?.panel?.gameTable,
+      className: "game-table-art-image"
+    });
+    safeImage?.mount(stressEyeArt, {
+      src: assets?.stressEye?.cold,
+      className: "state-art-image stress-eye-image"
+    });
+    safeImage?.mount(redEyePanelArt, {
+      src: assets?.redEye?.inactive,
+      className: "state-art-image red-eye-panel-image"
+    });
+    deckCards.forEach((card) => {
+      safeImage?.mount(card, {
+        src: assets?.cards?.deckBack,
+        className: "deck-card-image"
+      });
+    });
+  }
+
+  function stressEyeState(tilt = state.currentTilt) {
+    if (tilt >= 140) return "overload";
+    if (tilt >= tiltRules.redEyeEnter) return "redEye";
+    if (tilt >= 40) return "hot";
+    return "cold";
+  }
+
+  function updateStressEyeArt(previousTilt = state.currentTilt) {
+    if (!stressEyeArt || !safeImage || !assets?.stressEye) return;
+    const nextState = stressEyeState();
+    const changedState = stressEyeArt.dataset.assetState !== nextState;
+    stressEyeArt.dataset.assetState = nextState;
+    safeImage.setSource(artImage(stressEyeArt), assets.stressEye[nextState]);
+    if (changedState) pulseElement(stressEyeArt, "asset-state-pulse");
+
+    const now = performance.now();
+    const lastFlash = Number(stressEyeArt.dataset.lastFlash || 0);
+    if (state.currentTilt - previousTilt >= 2 && now - lastFlash > 320) {
+      stressEyeArt.dataset.lastFlash = String(now);
+      pulseElement(stressEyeArt, "asset-red-flash");
+    }
+  }
+
+  function baseRedEyeArtState() {
+    if (state.currentTilt >= 140 || state.failureType === "bustCard") return "burst";
+    if (state.activeRedEyeBet || state.redEyeUnlocked || state.redEyeActive) return "active";
+    return "inactive";
+  }
+
+  function updateRedEyePanelArt(forcedState = "") {
+    if (!redEyePanelArt || !safeImage || !assets?.redEye) return;
+    const forcedUntil = Number(redEyePanelArt.dataset.forcedUntil || 0);
+    const heldState = forcedUntil > performance.now() ? redEyePanelArt.dataset.forcedState : "";
+    if (!heldState && forcedUntil) {
+      delete redEyePanelArt.dataset.forcedState;
+      delete redEyePanelArt.dataset.forcedUntil;
+    }
+    const nextState = forcedState || heldState || baseRedEyeArtState();
+    if (!assets.redEye[nextState]) return;
+    redEyePanelArt.dataset.assetState = nextState;
+    safeImage.setSource(artImage(redEyePanelArt), assets.redEye[nextState]);
+  }
+
+  function pulseRedEyePanelArt(stateName, className, duration = 760) {
+    if (!redEyePanelArt) return;
+    redEyePanelArt.dataset.forcedState = stateName;
+    redEyePanelArt.dataset.forcedUntil = String(performance.now() + duration);
+    updateRedEyePanelArt(stateName);
+    pulseElement(redEyePanelArt, className);
+    window.setTimeout(() => {
+      delete redEyePanelArt.dataset.forcedState;
+      delete redEyePanelArt.dataset.forcedUntil;
+      updateRedEyePanelArt();
+    }, duration);
   }
 
   function initialSeed() {
@@ -815,6 +899,9 @@
     const steps = result.multiplierEvents || [];
     const firstMultiplier = steps[0]?.multBefore ?? result.multiplier;
     const baseScore = Math.round(result.base * firstMultiplier);
+    if (steps.some((step) => step.sourceType === "redEye")) {
+      pulseRedEyePanelArt("burst", "art-burst", 920);
+    }
 
     multValue.textContent = formatMultiplier(firstMultiplier);
     await animateNumber(scoreValue, state.currentScore, state.currentScore + baseScore, 260);
@@ -869,29 +956,61 @@
   async function animateSurgeReveal(surgeCard, result) {
     if (!surgeCard) return;
     pulseElement(redEyeEntry, "wager-press");
+    pulseRedEyePanelArt("trigger", "art-triggering", 1180);
     pulseElement(deckStack, "surge-shake");
 
     const source = boardRect(deckStack.getBoundingClientRect());
-    const reveal = document.createElement("div");
-    reveal.className = "surge-reveal-card";
+    const surgeHype = logic.cardHypeValue(surgeCard);
+    const reveal = surgeCardView?.create({
+      phase: "hidden",
+      value: surgeHype,
+      hypeValue: surgeHype,
+      colorClass: phaseSuit[surgeCard.phase].color,
+      faceMarkup: cardFaceMarkup(surgeCard)
+    }) || document.createElement("div");
+    if (!surgeCardView) {
+      reveal.className = "surge-reveal-card";
+      reveal.innerHTML = `
+        <div class="surge-card-face playing-card ${phaseSuit[surgeCard.phase].color}">${cardFaceMarkup(surgeCard)}</div>
+        <div class="surge-card-back"><span class="skull">☠</span></div>
+      `;
+    }
     reveal.style.left = `${source.left + source.width / 2 - 58}px`;
     reveal.style.top = `${source.top + source.height / 2 - 84}px`;
-    reveal.innerHTML = `
-      <div class="surge-card-face playing-card ${phaseSuit[surgeCard.phase].color}">${cardFaceMarkup(surgeCard)}</div>
-      <div class="surge-card-back"><span class="skull">☠</span></div>
-    `;
     board.appendChild(reveal);
     await wait(30);
+    surgeCardView?.update(reveal, {
+      phase: "flying",
+      value: surgeHype,
+      hypeValue: surgeHype,
+      faceMarkup: cardFaceMarkup(surgeCard)
+    });
     reveal.classList.add("at-reveal");
     await wait(260);
-    reveal.classList.add("is-face-up");
+    surgeCardView?.update(reveal, {
+      phase: "flipping",
+      value: surgeHype,
+      hypeValue: surgeHype,
+      faceMarkup: cardFaceMarkup(surgeCard)
+    });
+    await wait(30);
+    if (surgeCardView) {
+      surgeCardView.update(reveal, {
+        phase: "revealed",
+        value: surgeHype,
+        hypeValue: surgeHype,
+        faceMarkup: cardFaceMarkup(surgeCard)
+      });
+    } else {
+      reveal.classList.add("is-face-up");
+    }
     await wait(250);
 
     const revealRect = boardRect(reveal.getBoundingClientRect());
     const meterRect = boardRect(tiltSection.querySelector(".eye-meter").getBoundingClientRect());
     const hypeFly = document.createElement("div");
     hypeFly.className = "surge-hype-fly";
-    hypeFly.textContent = `+${logic.cardHypeValue(surgeCard)} 上头`;
+    hypeFly.textContent = `+${surgeHype} 上头`;
     hypeFly.style.left = `${revealRect.left + revealRect.width / 2}px`;
     hypeFly.style.top = `${revealRect.top + revealRect.height / 2}px`;
     board.appendChild(hypeFly);
@@ -905,7 +1024,7 @@
       : 0;
     const intermediateTilt = result.insuranceTriggered
       ? result.pressure
-      : Math.min(result.pressure, state.currentTilt + logic.cardHypeValue(surgeCard) + iouHype);
+      : Math.min(result.pressure, state.currentTilt + surgeHype + iouHype);
     await Promise.all([
       animateTilt(intermediateTilt, 280),
       wait(300)
@@ -959,6 +1078,7 @@
   }
 
   function updateTilt(nextTilt) {
+    const previousTilt = state.currentTilt;
     const wasRedEyeActive = state.redEyeActive;
     state.currentTilt = Math.max(0, Math.min(maxTilt, nextTilt));
     state.redEyeActive = logic.updateRedEyeState(state.currentTilt, state.redEyeActive);
@@ -985,6 +1105,8 @@
     tiltSection.querySelector(".eye-meter")?.setAttribute("aria-label", `上头值 ${Math.round(state.currentTilt)} / ${maxTilt}`);
     updateGlobalHeatState();
     updateRedEyeEntryCopy();
+    updateStressEyeArt(previousTilt);
+    updateRedEyePanelArt();
     if (!wasRedEyeActive && state.redEyeActive) playRedEyeEntryAnimation();
     if (wasRedEyeActive && !state.redEyeActive) playRedEyeExitAnimation();
   }
@@ -1072,6 +1194,7 @@
     redEyeTooltip.classList.remove("show");
     board.classList.add("betting");
     updateRedEyeEntryCopy();
+    pulseRedEyePanelArt("active", "asset-state-pulse");
   }
 
   function showRedEyeUnlocked() {
@@ -1085,6 +1208,7 @@
     redEyeTooltip.classList.remove("show");
     pulseElement(redEyeEntry, "red-eye-waking");
     updateRedEyeEntryCopy();
+    pulseRedEyePanelArt("active", "asset-state-pulse");
   }
 
   function consumeActiveRedEyeBetAfterShowdown() {
@@ -1103,6 +1227,7 @@
     redEyeTooltip.classList.remove("show");
     board.classList.remove("betting");
     updateRedEyeEntryCopy();
+    updateRedEyePanelArt();
   }
 
   function handleRedEyeEntryClick() {
@@ -1133,6 +1258,7 @@
     redEyeEntry.removeAttribute("title");
     board.classList.remove("betting");
     updateRedEyeEntryCopy();
+    updateRedEyePanelArt();
   }
 
   function unlockRedEyeIfNeeded() {
@@ -1886,6 +2012,7 @@
 
   async function init() {
     fitBoard();
+    mountArtAssets();
     updateTargetScore();
     drawInitialHand();
     renderOwnedGhosts();

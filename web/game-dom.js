@@ -7,6 +7,7 @@
 
     return {
       board,
+      gameTableArt: document.querySelector(".game-table-art"),
       handCards: [...document.querySelectorAll(".hand-card")],
       playedCards: document.querySelector(".played-cards"),
       showdownButton: document.querySelector(".showdown-button"),
@@ -27,8 +28,10 @@
       tiltSection: document.querySelector(".tilt-meter"),
       tiltValue: document.querySelector(".section-title strong"),
       meterHand: document.querySelector(".meter-hand"),
+      stressEyeArt: document.querySelector(".stress-eye-art"),
       deckCount: document.querySelector(".deck-count"),
       deckStack: document.querySelector(".deck-stack"),
+      deckCards: [...document.querySelectorAll(".deck-card")],
       jokerZone: document.querySelector(".joker-zone"),
       jokerRow: document.querySelector(".joker-row"),
       jokerCount: document.querySelector(".joker-count"),
@@ -37,6 +40,7 @@
       redEyeModalClose: document.querySelector(".red-eye-modal-close"),
       redEyeOptionsPanel: document.querySelector(".red-eye-options"),
       redEyeEntry,
+      redEyePanelArt: redEyeEntry.querySelector(".red-eye-panel-art"),
       redEyeStateText: redEyeEntry.querySelector("strong"),
       redEyeEntryDetail: redEyeEntry.querySelector(".red-eye-entry-detail"),
       redEyeIcon: document.querySelector(".red-eye-status-icon"),
