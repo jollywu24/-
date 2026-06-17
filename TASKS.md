@@ -10,6 +10,8 @@
 - 已将通用动画工具和 DOM 查询分别提取到 `web/animations.js`、`web/game-dom.js`。
 - 已增加架构模块测试和固定 seed 浏览器流程测试，覆盖基础出牌/换牌、红眼赌注、通关结算、商店购买、商店进入下一轮、爆牌失败、庄家通吃和失败后重开。
 - 已明确文档职责：`PROJECT_CONTEXT.md` 做全局入口和改动导航，`docs/component_rules.md` 做当前规则事实来源，领域 README 说明实现位置。
+- 已将上线 MVP / Steam 1000 愿望单目标拆入 `docs/launch_goal.md`。
+- 已修正 GitHub Pages 发布 artifact，线上发布会同时包含 `web/`、`art/` 和 `public/`。
 
 ## 最值得优先重构的 3 个点
 
@@ -18,22 +20,6 @@
 3. 扩展固定 seed 浏览器测试，覆盖失败、通关、商店与红眼赌注流程。
 
 ## P0：优先处理
-
-### 修正 GitHub Pages 美术资源发布
-
-**现状**
-
-- 工作流只上传 `web/`。
-- 页面通过 `../art/` 引用商店图和红眼 VFX。
-
-**风险**
-
-- 本地运行正常，但 GitHub Pages 可能缺少图片资源。
-
-**建议后续重构**
-
-- 选择统一资源发布策略：扩大 Pages artifact 范围，或将运行时资源放入可发布目录。
-- 增加部署后资源可访问性检查。
 
 ### 增加浏览器流程回归测试
 
@@ -61,6 +47,18 @@
 - 每次流程或架构改动后检查 `PROJECT_CONTEXT.md` 与 `ARCHITECTURE.md`。
 
 ## P1：高价值架构改进
+
+### 增加部署后资源可访问性检查
+
+**现状**
+
+- Pages artifact 已包含 `web/`、`art/` 和 `public/`。
+- 当前仍缺少自动访问线上 URL 并检查主要图片资源的步骤。
+
+**建议后续重构**
+
+- 增加部署后 smoke check，检查 `/web/`、`/art/shop.png`、`/public/assets/ui/cards/deck_back.png` 等关键路径。
+- 将检查结果写入发布记录或 CI 摘要。
 
 ### 拆分 `web/app.js` 的职责
 

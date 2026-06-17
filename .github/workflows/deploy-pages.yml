@@ -31,10 +31,17 @@ jobs:
         run: |
           perl -0pi -e "s/window.__BUILD_SHA__ \|\| 'dev'/window.__BUILD_SHA__ || '${GITHUB_SHA::7}'/g" web/app.js
 
+      - name: Prepare Pages artifact
+        run: |
+          mkdir -p dist-pages
+          cp -R web dist-pages/web
+          cp -R art dist-pages/art
+          cp -R public dist-pages/public
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./web
+          path: ./dist-pages
 
       - name: Deploy to GitHub Pages
         id: deployment

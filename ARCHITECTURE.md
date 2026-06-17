@@ -263,15 +263,17 @@ discardSelectedCards
 
 ## 部署
 
-`.github/workflows/deploy-pages.yml` 当前上传 `./web` 作为 Pages artifact。
+`.github/workflows/deploy-pages.yml` 当前会先准备 `dist-pages/`，再上传该目录作为 Pages artifact。
 
-当前网页还引用：
+发布 artifact 包含：
 
-- `../art/shop.png`
-- `../art/vfx/*.png`
-- `../public/assets/**/*.png`
+- `web/`
+- `art/`
+- `public/`
 
-因此只发布 `web/` 时，线上构建可能缺失图片资源。建议后续修正发布范围或资源位置，但本次不修改部署逻辑。
+因此线上入口应使用 `/web/` 路径，例如 `https://<用户名>.github.io/<仓库名>/web/`。这样 `web/` 内的 `../art/` 和 `../public/assets/` 引用会指向同一个 Pages artifact 中的资源目录。
+
+后续如果调整资源目录或改为构建产物，必须同步检查 `web/asset-map.js`、`web/style.css`、`web/index.html` 和发布工作流。
 
 ## 建议后续重构边界
 

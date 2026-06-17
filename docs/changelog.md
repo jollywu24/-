@@ -1,5 +1,14 @@
 # 更新记录
 
+## 2026-06-17
+
+### 上线目标
+
+- 新增 `docs/launch_goal.md`，将“上线 MVP / Steam 1000 愿望单”拆成公开试玩标准、P0 冒烟项、Steam 页面材料、截图/短视频需求和不上线范围。
+- `PROJECT_CONTEXT.md` 增加上线目标改动导航和进一步阅读入口。
+- GitHub Pages 发布流程改为上传 `dist-pages/`，其中包含 `web/`、`art/` 和 `public/`，避免线上缺少本地美术资源。
+- 更新 `ARCHITECTURE.md`、`TASKS.md` 和 `.github_pages.md`，同步当前部署方式和后续资源可访问性检查任务。
+
 ## 2026-06-06
 
 ### 当前状态

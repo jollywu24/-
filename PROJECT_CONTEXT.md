@@ -88,6 +88,7 @@ git diff --check
 | 主界面布局、左侧顺序、弹窗层级 | `docs/ui_spec.md` | `web/index.html`、`web/style.css`、`web/app.js` | `docs/ui_spec.md` |
 | 视觉令牌、美术资源、发光强度 | `docs/design_tokens.md` | `web/style.css`、`web/asset-map.js`、`public/assets/`、`art/` | `docs/design_tokens.md`、`public/assets/manifest/ASSET_MANIFEST.md` |
 | 自动化测试和 QA 覆盖 | `TASKS.md`、`ARCHITECTURE.md` | `web/tests/` | `TASKS.md`、`ARCHITECTURE.md` |
+| 上线 MVP、Steam 愿望单材料、发布 QA | `docs/launch_goal.md` | `.github/workflows/deploy-pages.yml`、`web/tests/`、发布素材 | `docs/launch_goal.md`、`TASKS.md`、`ARCHITECTURE.md` |
 
 ## 当前产品边界
 
@@ -183,6 +184,7 @@ git diff --check
 
 - [架构说明](ARCHITECTURE.md)
 - [任务清单](TASKS.md)
+- [上线 MVP 目标](docs/launch_goal.md)
 - [结算说明](docs/scoring/README.md)
 - [红眼说明](docs/redEye/README.md)
 - [暗涌说明](docs/surge/README.md)
