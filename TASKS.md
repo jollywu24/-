@@ -13,6 +13,7 @@
 - 已将上线 MVP / Steam 1000 愿望单目标拆入 `docs/launch_goal.md`。
 - 已修正 GitHub Pages 发布 artifact，线上发布会同时包含 `web/`、`art/` 和 `public/`。
 - 已增加 `web/tests/deploy-assets.test.mjs`，保护 Pages artifact 目录策略和关键运行时图片路径。
+- 已补充 Steam 愿望单转化材料草案，包括商店页文案、截图/视频镜头、胶囊图需求和反馈入口。
 
 ## 最值得优先重构的 3 个点
 
@@ -47,6 +48,19 @@
 - 继续以 `logic-pure.js` 测试作为单手规则数值证据，以 `round-rules.js` 测试保护纯回合规则。
 - 每次规则改动后检查 `docs/component_rules.md` 和对应领域 README。
 - 每次流程或架构改动后检查 `PROJECT_CONTEXT.md` 与 `ARCHITECTURE.md`。
+
+### 产出第一批 Steam 页面素材
+
+**现状**
+
+- `docs/launch_goal.md` 已包含商店页文案草案、截图 shot list、短视频脚本、胶囊图需求和反馈问题。
+- 尚未产出最终截图、视频/GIF、胶囊图和 Steam 页面实填素材。
+
+**建议后续执行**
+
+- 按 `docs/launch_goal.md` 的截图清单，用固定 seed 截取 5 张首发截图。
+- 录制 15-30 秒短视频，优先展示“选牌 -> 上头上涨 -> 红眼赌注 -> 暗涌 -> 结果”。
+- 为胶囊图整理可交付给美术的参考图和标题安全区。
 
 ## P1：高价值架构改进
 
