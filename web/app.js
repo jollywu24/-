@@ -740,6 +740,72 @@
     return preview;
   }
 
+  function exposeDebugApi() {
+    if (new URLSearchParams(window.location.search).get("debug") !== "1") return;
+    window.AbyssDebug = {
+      snapshot() {
+        return {
+          phase: state.phase,
+          settling: state.settling,
+          failed: state.failed,
+          failureType: state.failureType,
+          failureTitle: failureTitle.textContent,
+          roundIndex: state.roundIndex,
+          currentScore: state.currentScore,
+          targetScore: state.currentTargetScore,
+          currentTilt: state.currentTilt,
+          redEyeActive: state.redEyeActive,
+          redEyeUnlocked: state.redEyeUnlocked,
+          redEyeUsedThisRound: state.redEyeUsedThisRound,
+          activeRedEyeBet: state.activeRedEyeBet?.id || null,
+          showdownsLeft: state.showdownsLeft,
+          discardsLeft: state.discardsLeft,
+          stake: state.currentStake,
+          ownedGhostCount: state.ownedGhosts.length,
+          deckCount: state.deck.length,
+          discardCount: state.discardPile.length,
+          handIds: state.hand.map((card) => card.deckId),
+          selectedCount: state.selectedIds.size,
+          roundClearVisible: roundClearOverlay.classList.contains("show"),
+          shopVisible: shopStage.classList.contains("show"),
+          redEyeModalVisible: redEyeModal.classList.contains("show")
+        };
+      },
+      setScore(value) {
+        state.currentScore = Math.max(0, Number(value) || 0);
+        scoreValue.textContent = formatNumber(state.currentScore);
+      },
+      setTargetScore(value) {
+        state.currentTargetScore = Math.max(1, Number(value) || state.currentTargetScore);
+        updateTargetScore();
+      },
+      setTilt(value) {
+        updateTilt(Math.max(0, Math.min(maxTilt, Number(value) || 0)));
+        unlockRedEyeIfNeeded();
+      },
+      setShowdownsLeft(value) {
+        state.showdownsLeft = Math.max(0, Math.min(showdownsMax, Math.floor(Number(value) || 0)));
+        updateCounts();
+      },
+      setDiscardsLeft(value) {
+        state.discardsLeft = Math.max(0, Math.min(maxDiscards, Math.floor(Number(value) || 0)));
+        updateCounts();
+      },
+      setStake(value) {
+        state.currentStake = Math.max(0, Number(value) || 0);
+        updateStake();
+        if (state.phase === "shop") renderShop();
+      },
+      selectFirstCards(count) {
+        if (state.phase !== "playing" || state.settling) return;
+        state.selectedIds = new Set(state.hand.slice(0, Math.max(0, Math.min(5, count))).map((card) => card.uid));
+        handCards.forEach((card) => card.classList.toggle("selected", state.selectedIds.has(card.dataset.uid)));
+        updatePreview();
+        updateActionButtons();
+      }
+    };
+  }
+
   function makePlayedCard(cardNode) {
     const clone = cardNode.cloneNode(true);
     clone.className = "playing-card played";
@@ -1345,13 +1411,21 @@
     });
   }
 
-  function applyRedEyeRoundCostOnClear({ stealLineClears }) {
+  function applyRedEyeRoundCostOnClear({ stealLineClears, lifeDebtSaved = false }) {
     const cost = roundRules.redEyeRoundCostOnClear({
       bet: state.activeRedEyeBet,
-      stealLineClears
+      stealLineClears,
+      lifeDebtSaved
     });
     state.pendingNextRoundTiltBonus += cost.tiltBonus;
-    if (cost.tiltOverride !== null) state.pendingNextRoundTiltOverride = cost.tiltOverride;
+    if (cost.tiltOverride !== null) queueNextRoundTiltFloor(cost.tiltOverride);
+  }
+
+  function queueNextRoundTiltFloor(floor) {
+    if (!Number.isFinite(floor)) return;
+    state.pendingNextRoundTiltOverride = state.pendingNextRoundTiltOverride === null
+      ? floor
+      : Math.max(state.pendingNextRoundTiltOverride, floor);
   }
 
   function calculateFlipDealerBonus(clearsTarget) {
@@ -1773,7 +1847,10 @@
     const nextScore = state.currentScore + result.profit;
     state.showdownsLeft = Math.max(0, state.showdownsLeft - 1);
     const lifeDebtWouldBurst = Boolean(state.activeRedEyeBet?.rules?.preventBust) && result.pressure >= maxTilt;
-    const resolvedPressure = lifeDebtWouldBurst ? maxTilt - 1 : result.pressure;
+    const resolvedPressure = lifeDebtWouldBurst
+      ? state.activeRedEyeBet?.rules?.rescueTilt ?? 120
+      : result.pressure;
+    if (lifeDebtWouldBurst) queueNextRoundTiltFloor(state.activeRedEyeBet?.rules?.nextRoundTiltFloorOnClear);
     await animateTilt(resolvedPressure);
     pulseElement(tiltSection, "tilt-pulse");
     if (resolvedPressure >= 140) pulseElement(board, "critical-hit");
@@ -1801,7 +1878,7 @@
     updateCounts();
 
     if (clearsTarget) {
-      applyRedEyeRoundCostOnClear({ stealLineClears, lifeDebtWouldBurst });
+      applyRedEyeRoundCostOnClear({ stealLineClears, lifeDebtSaved: lifeDebtWouldBurst });
       const reward = calculateRoundReward({
         flipBonus: calculateFlipDealerBonus(clearsTarget)
       });
@@ -2020,6 +2097,7 @@
     bindEvents();
     await dealHandFromDeck();
     unlockRedEyeIfNeeded();
+    exposeDebugApi();
   }
 
   init();

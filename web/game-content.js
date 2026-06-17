@@ -39,8 +39,8 @@
       id: "lifeDebt",
       name: "欠命",
       icon: "†",
-      text: "本手不会爆牌，追加 1 张暗涌牌。若成功过关，下一轮上头至少 90。",
-      rules: { preventBust: true, nextRoundTiltFloorOnClear: 90, surgeCount: 1 }
+      text: "本手不会爆牌；若本应爆牌，上头设为 120。追加 1 张暗涌牌。",
+      rules: { preventBust: true, rescueTilt: 120, nextRoundTiltFloorOnClear: 90, surgeCount: 1 }
     }
   };
 

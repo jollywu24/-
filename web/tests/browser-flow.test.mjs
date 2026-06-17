@@ -133,6 +133,45 @@ const snapshotExpression = `(() => ({
   discardCount: document.querySelectorAll('.count-stack strong')[1].textContent.trim()
 }))()`;
 
+async function withBrowser(pathAndQuery, callback) {
+  const server = await startServer();
+  const profileDir = await mkdtemp(join(tmpdir(), 'abyss-browser-test-'));
+  const port = server.address().port;
+  const url = `http://127.0.0.1:${port}${pathAndQuery}`;
+  const chrome = spawn(process.env.CHROME_BIN || 'google-chrome', [
+    '--headless=new',
+    '--no-sandbox',
+    '--disable-gpu',
+    '--disable-dev-shm-usage',
+    '--remote-debugging-address=127.0.0.1',
+    '--remote-debugging-port=0',
+    `--user-data-dir=${profileDir}`,
+    url,
+  ], { stdio: ['ignore', 'ignore', 'pipe'] });
+
+  let cdp;
+  try {
+    const devToolsPort = await waitForDevTools(chrome);
+    cdp = await connectCdp(await waitForPageTarget(devToolsPort));
+    await cdp.send('Runtime.enable');
+    await cdp.send('Log.enable');
+    await callback(cdp, url);
+  } finally {
+    cdp?.close();
+    chrome.kill('SIGTERM');
+    await Promise.race([
+      new Promise((resolve) => chrome.once('exit', resolve)),
+      new Promise((resolve) => setTimeout(resolve, 1000)),
+    ]);
+    if (chrome.exitCode === null) {
+      chrome.kill('SIGKILL');
+      await new Promise((resolve) => chrome.once('exit', resolve));
+    }
+    await new Promise((resolve) => server.close(resolve));
+    await rm(profileDir, { recursive: true, force: true });
+  }
+}
+
 test('固定 seed 浏览器流程保持初始化、换牌和摊牌行为', { timeout: 40000 }, async () => {
   const server = await startServer();
   const profileDir = await mkdtemp(join(tmpdir(), 'abyss-browser-test-'));
@@ -207,4 +246,69 @@ test('固定 seed 浏览器流程保持初始化、换牌和摊牌行为', { tim
     await new Promise((resolve) => server.close(resolve));
     await rm(profileDir, { recursive: true, force: true });
   }
+});
+
+test('调试流程覆盖红眼下注、通关结算、商店和爆牌失败', { timeout: 60000 }, async () => {
+  await withBrowser('/web/?seed=flow-branches&debug=1', async (cdp) => {
+    await waitFor(cdp, `window.AbyssDebug && document.readyState === 'complete' && document.querySelectorAll('.hand-card[data-deck-id]').length === 8 && !document.querySelector('.drawing-card')`);
+
+    await evaluate(cdp, `window.AbyssDebug.setTilt(100)`);
+    await waitFor(cdp, `window.AbyssDebug.snapshot().redEyeUnlocked === true`);
+    await evaluate(cdp, `document.querySelector('.red-eye-entry').click()`);
+    await waitFor(cdp, `document.querySelector('.red-eye-modal').classList.contains('show')`);
+    await evaluate(cdp, `document.querySelector('.red-eye-option-card').click()`);
+    await waitFor(cdp, `window.AbyssDebug.snapshot().activeRedEyeBet !== null && !document.querySelector('.red-eye-modal').classList.contains('show')`);
+
+    await evaluate(cdp, `window.AbyssDebug.setTargetScore(1); window.AbyssDebug.selectFirstCards(1);`);
+    await evaluate(cdp, `document.querySelector('.showdown-button').click()`);
+    await waitFor(cdp, `document.querySelector('.round-clear-overlay').classList.contains('show') && !document.querySelector('.round-clear-continue').disabled`, 25000);
+    const clearSnapshot = await evaluate(cdp, `window.AbyssDebug.snapshot()`);
+    assert.equal(clearSnapshot.phase, 'roundClear');
+    assert.equal(clearSnapshot.activeRedEyeBet, null);
+    assert.equal(clearSnapshot.redEyeUsedThisRound, true);
+    assert.equal(clearSnapshot.roundClearVisible, true);
+
+    await evaluate(cdp, `document.querySelector('.round-clear-continue').click()`);
+    await waitFor(cdp, `window.AbyssDebug.snapshot().phase === 'shop' && document.querySelector('.shop-stage').classList.contains('show')`, 20000);
+    const shopSnapshot = await evaluate(cdp, `window.AbyssDebug.snapshot()`);
+    assert.equal(shopSnapshot.shopVisible, true);
+    assert.equal(shopSnapshot.phase, 'shop');
+
+    await evaluate(cdp, `window.AbyssDebug.setStake(50)`);
+    await evaluate(cdp, `document.querySelector('button[data-shop-buy-ghost]').click()`);
+    await waitFor(cdp, `window.AbyssDebug.snapshot().ownedGhostCount === 1 && document.querySelectorAll('.owned-ghost-card').length === 1`);
+    await evaluate(cdp, `document.querySelector('button[data-shop-pack]').click()`);
+    await waitFor(cdp, `document.querySelectorAll('.shop-pack-product.shop-product-sold').length >= 1`);
+
+    await evaluate(cdp, `document.querySelector('.shop-next-button').click()`);
+    await waitFor(cdp, `window.AbyssDebug.snapshot().phase === 'playing' && window.AbyssDebug.snapshot().roundIndex === 1 && !document.querySelector('.shop-stage').classList.contains('show') && !document.querySelector('.drawing-card')`, 25000);
+    const nextRoundSnapshot = await evaluate(cdp, `window.AbyssDebug.snapshot()`);
+    assert.equal(nextRoundSnapshot.roundIndex, 1);
+    assert.equal(nextRoundSnapshot.redEyeUsedThisRound, false);
+    assert.equal(nextRoundSnapshot.activeRedEyeBet, null);
+
+    await evaluate(cdp, `window.AbyssDebug.setTargetScore(999999); window.AbyssDebug.setTilt(159); window.AbyssDebug.selectFirstCards(1);`);
+    await evaluate(cdp, `document.querySelector('.showdown-button').click()`);
+    await waitFor(cdp, `document.querySelector('.failure-overlay').classList.contains('show')`, 25000);
+    const failureSnapshot = await evaluate(cdp, `window.AbyssDebug.snapshot()`);
+    assert.equal(failureSnapshot.phase, 'failed');
+    assert.equal(failureSnapshot.failureType, 'bustCard');
+    assert.equal(failureSnapshot.failureTitle, '爆牌');
+
+    await evaluate(cdp, `document.querySelector('.failure-restart').click()`);
+    await waitFor(cdp, `window.AbyssDebug.snapshot().phase === 'playing' && window.AbyssDebug.snapshot().currentScore === 0 && window.AbyssDebug.snapshot().currentTilt === 0 && document.querySelectorAll('.hand-card[data-deck-id]').length === 8 && !document.querySelector('.failure-overlay').classList.contains('show') && !document.querySelector('.drawing-card')`, 25000);
+    const restartedSnapshot = await evaluate(cdp, `window.AbyssDebug.snapshot()`);
+    assert.equal(restartedSnapshot.roundIndex, 0);
+    assert.equal(restartedSnapshot.showdownsLeft, 3);
+
+    await evaluate(cdp, `window.AbyssDebug.setTargetScore(999999); window.AbyssDebug.setShowdownsLeft(1); window.AbyssDebug.selectFirstCards(1);`);
+    await evaluate(cdp, `document.querySelector('.showdown-button').click()`);
+    await waitFor(cdp, `document.querySelector('.failure-overlay').classList.contains('show') && window.AbyssDebug.snapshot().failureType === 'houseTakes'`, 25000);
+    const houseSnapshot = await evaluate(cdp, `window.AbyssDebug.snapshot()`);
+    assert.equal(houseSnapshot.phase, 'failed');
+    assert.equal(houseSnapshot.failureTitle, '庄家通吃');
+
+    await evaluate(cdp, `document.querySelector('.failure-restart').click()`);
+    await waitFor(cdp, `window.AbyssDebug.snapshot().phase === 'playing' && window.AbyssDebug.snapshot().currentScore === 0 && window.AbyssDebug.snapshot().showdownsLeft === 3 && document.querySelectorAll('.hand-card[data-deck-id]').length === 8 && !document.querySelector('.failure-overlay').classList.contains('show') && !document.querySelector('.drawing-card')`, 25000);
+  });
 });

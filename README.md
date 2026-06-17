@@ -44,18 +44,22 @@ http://localhost:8000/web/?seed=balance-42
 - 上头值达到 `100` 进入红眼，红眼时本手倍率 `×1.5`；降至 `80` 或以下退出红眼。
 - 上头值最大为 `160`，达到 `160` 立即爆牌失败。
 - 普通关、精英关、Boss 关过关后分别降低 `25`、`35`、`50` 上头值。
-- 商店可花费赌资购买降压道具。
+- 通关结算后进入商店，可购买赌鬼、刷新赌鬼、购买卡包入口或降压道具，并进入下一局。
 - 摊牌次数耗尽且未达标时，庄家通吃失败。
 
 ## 有效设计文档
 
-当前有效设计文档统一放在 `docs/`：
+当前有效设计文档统一放在 `docs/`。文档职责如下：
 
+- `PROJECT_CONTEXT.md`：新对话接手项目的全局入口，包含目录职责、改动导航和验证命令。
+- `ARCHITECTURE.md`：实现分层、状态流、流程边界和测试边界。
 - `docs/ui_spec.md`：主界面布局、固定画布、五区结构和受保护信息顺序。
-- `docs/component_rules.md`：基础牌、牌型、赌鬼、上头值、红眼赌注、商店与 UI 修改规则。
+- `docs/component_rules.md`：当前玩法和 UI 规则的主要事实来源。
 - `docs/design_tokens.md`：颜色、材质、强度、字体和资源约束。
-- `docs/decision_log.md`：核心设计决策、术语切换和当前 MVP 状态。
-- `docs/changelog.md`：开发记录、UI 调整和后续建议。
+- `docs/decision_log.md`：核心设计决策和原因，不作为最新功能清单。
+- `docs/changelog.md`：开发记录，不作为最新规则来源。
+
+`docs/scoring/`、`docs/redEye/`、`docs/surge/`、`docs/jokers/`、`docs/animations/` 是领域说明，描述当前实现位置和维护注意事项。若数值规则冲突，以 `docs/component_rules.md` 和对应测试为准。
 
 ## 语言约定
 

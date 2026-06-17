@@ -159,12 +159,14 @@ test('red eye bet replaces effective-card hype with one surge card', () => {
   });
 
   assert.equal(preview.hypeBaseFromCards, 0);
-  assert.equal(preview.hypeDeltaTotal, 8);
-  assert.equal(preview.hypePreviewMin, 10);
-  assert.equal(preview.hypePreviewMax, 19);
+  assert.equal(preview.hypeFromHandType, 0);
+  assert.equal(preview.hypeDeltaTotal, 0);
+  assert.equal(preview.hypePreviewMin, 2);
+  assert.equal(preview.hypePreviewMax, 11);
   assert.equal(resolved.hypeFromRedEyeBet, 0);
   assert.equal(resolved.hypeFromSurgeCard, 10);
-  assert.equal(resolved.pressure, 18);
+  assert.equal(resolved.hypeFromHandType, 0);
+  assert.equal(resolved.pressure, 10);
 });
 
 test('createRng returns repeatable sequences for the same seed', () => {

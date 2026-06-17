@@ -72,6 +72,23 @@ test('纯回合规则保持爆牌优先和红眼赌注跨轮结果', () => {
     tiltBonus: 25,
     tiltOverride: null,
   });
+  assert.deepEqual(roundRules.redEyeRoundCostOnClear({
+    bet: content.RED_EYE_BETS.lifeDebt,
+    stealLineClears: false,
+    lifeDebtSaved: false,
+  }), {
+    tiltBonus: 0,
+    tiltOverride: null,
+  });
+  assert.deepEqual(roundRules.redEyeRoundCostOnClear({
+    bet: content.RED_EYE_BETS.lifeDebt,
+    stealLineClears: false,
+    lifeDebtSaved: true,
+  }), {
+    tiltBonus: 0,
+    tiltOverride: 90,
+  });
+  assert.equal(content.RED_EYE_BET_RULES.lifeDebt.rescueTilt, 120);
   assert.equal(roundRules.redEyeRoundCostOnClear({
     bet: content.RED_EYE_BETS.stealLine,
     stealLineClears: true,

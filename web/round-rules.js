@@ -14,11 +14,15 @@
     return Number.isFinite(threshold) && score >= targetScore * threshold && score < targetScore;
   }
 
-  function redEyeRoundCostOnClear({ bet, stealLineClears }) {
+  function redEyeRoundCostOnClear({ bet, stealLineClears, lifeDebtSaved = false }) {
+    const rules = bet?.rules || {};
+    const tiltOverride = rules.preventBust && !lifeDebtSaved
+      ? null
+      : rules.nextRoundTiltFloorOnClear ?? null;
     return {
-      tiltBonus: (bet?.rules?.nextRoundTiltBonusOnClear || 0)
-        + (stealLineClears ? bet?.rules?.nextRoundTiltBonusOnStealLine || 0 : 0),
-      tiltOverride: bet?.rules?.nextRoundTiltFloorOnClear ?? null
+      tiltBonus: (rules.nextRoundTiltBonusOnClear || 0)
+        + (stealLineClears ? rules.nextRoundTiltBonusOnStealLine || 0 : 0),
+      tiltOverride
     };
   }
 

@@ -189,7 +189,7 @@
 
   function calculateHypeBreakdown({ cards = [], sequence = null, redEyeBet = null, surgeCard = null }) {
     const hypeBaseFromCards = redEyeBet ? 0 : cards.reduce((sum, card) => sum + cardHypeValue(card), 0);
-    const hypeFromHandType = sequence?.hype || 0;
+    const hypeFromHandType = redEyeBet ? 0 : sequence?.hype || 0;
     const hypeFromRedEyeBet = 0;
     const hypeFromSurgeCard = redEyeBet && surgeCard ? cardHypeValue(surgeCard) : 0;
     const hypeDeltaTotal = hypeBaseFromCards + hypeFromHandType + hypeFromRedEyeBet + hypeFromSurgeCard;
