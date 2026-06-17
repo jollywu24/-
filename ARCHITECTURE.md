@@ -245,6 +245,7 @@ discardSelectedCards
 - Boss 规则接口。
 - 倍率事件顺序。
 - 集中内容定义、运行时状态和纯回合规则。
+- GitHub Pages artifact 的目录策略和关键运行时图片资源路径。
 
 固定 seed 浏览器测试 `web/tests/browser-flow.test.mjs` 的用例已覆盖初始化、选牌、换牌、摊牌、同 seed 重载一致性、红眼赌注入口、通关结算、商店购买、商店进入下一轮、爆牌失败、庄家通吃和失败后重开。后续仍应继续扩充红眼不同赌注、Boss 盲注和多 seed 分支。
 
@@ -274,6 +275,8 @@ discardSelectedCards
 因此线上入口应使用 `/web/` 路径，例如 `https://<用户名>.github.io/<仓库名>/web/`。这样 `web/` 内的 `../art/` 和 `../public/assets/` 引用会指向同一个 Pages artifact 中的资源目录。
 
 后续如果调整资源目录或改为构建产物，必须同步检查 `web/asset-map.js`、`web/style.css`、`web/index.html` 和发布工作流。
+
+`web/tests/deploy-assets.test.mjs` 会保护当前发布策略：Pages artifact 必须包含 `web/`、`art/`、`public/`，并确认主要背景、牌背、红眼、上头眼睛和暗涌资源在仓库中存在。
 
 ## 建议后续重构边界
 

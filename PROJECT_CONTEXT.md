@@ -29,7 +29,7 @@ http://localhost:8000/web/?seed=balance-42
 node --check web/app.js
 node --check web/logic-pure.js
 node --check web/round-rules.js
-node --test web/tests/logic-pure.test.mjs web/tests/architecture-modules.test.mjs
+node --test web/tests/logic-pure.test.mjs web/tests/architecture-modules.test.mjs web/tests/deploy-assets.test.mjs
 git diff --check
 ```
 
@@ -87,7 +87,7 @@ git diff --check
 | Boss 盲注负面规则 | `ARCHITECTURE.md`、`docs/component_rules.md` | `web/logic-pure.js` 的 `bossRule` 接口，后续 UI 在 `web/app.js` | `ARCHITECTURE.md`、`docs/component_rules.md` |
 | 主界面布局、左侧顺序、弹窗层级 | `docs/ui_spec.md` | `web/index.html`、`web/style.css`、`web/app.js` | `docs/ui_spec.md` |
 | 视觉令牌、美术资源、发光强度 | `docs/design_tokens.md` | `web/style.css`、`web/asset-map.js`、`public/assets/`、`art/` | `docs/design_tokens.md`、`public/assets/manifest/ASSET_MANIFEST.md` |
-| 自动化测试和 QA 覆盖 | `TASKS.md`、`ARCHITECTURE.md` | `web/tests/` | `TASKS.md`、`ARCHITECTURE.md` |
+| 自动化测试、部署检查和 QA 覆盖 | `TASKS.md`、`ARCHITECTURE.md`、`docs/launch_goal.md` | `web/tests/` | `TASKS.md`、`ARCHITECTURE.md`、`docs/launch_goal.md` |
 | 上线 MVP、Steam 愿望单材料、发布 QA | `docs/launch_goal.md` | `.github/workflows/deploy-pages.yml`、`web/tests/`、发布素材 | `docs/launch_goal.md`、`TASKS.md`、`ARCHITECTURE.md` |
 
 ## 当前产品边界

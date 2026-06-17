@@ -12,6 +12,7 @@
 - 已明确文档职责：`PROJECT_CONTEXT.md` 做全局入口和改动导航，`docs/component_rules.md` 做当前规则事实来源，领域 README 说明实现位置。
 - 已将上线 MVP / Steam 1000 愿望单目标拆入 `docs/launch_goal.md`。
 - 已修正 GitHub Pages 发布 artifact，线上发布会同时包含 `web/`、`art/` 和 `public/`。
+- 已增加 `web/tests/deploy-assets.test.mjs`，保护 Pages artifact 目录策略和关键运行时图片路径。
 
 ## 最值得优先重构的 3 个点
 
@@ -21,7 +22,7 @@
 
 ## P0：优先处理
 
-### 增加浏览器流程回归测试
+### 增加浏览器流程回归测试与上线 QA 证据
 
 **现状**
 
@@ -32,6 +33,7 @@
 
 - 扩展现有固定 seed DOM 级测试。
 - 优先新增：不同红眼赌注、Boss 盲注流程和更多固定 seed。
+- 将 `docs/launch_goal.md` 的 P0 QA 清单沉淀成每次公开试玩前的手动验收记录。
 
 ### 保持文档与实现同步
 
@@ -48,12 +50,12 @@
 
 ## P1：高价值架构改进
 
-### 增加部署后资源可访问性检查
+### 增加部署后线上 URL 可访问性检查
 
 **现状**
 
-- Pages artifact 已包含 `web/`、`art/` 和 `public/`。
-- 当前仍缺少自动访问线上 URL 并检查主要图片资源的步骤。
+- Pages artifact 已包含 `web/`、`art/` 和 `public/`，并有本地测试保护。
+- 当前仍缺少自动访问线上 URL 并检查主要图片资源 HTTP 状态的步骤。
 
 **建议后续重构**
 

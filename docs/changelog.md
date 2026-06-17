@@ -8,6 +8,8 @@
 - `PROJECT_CONTEXT.md` 增加上线目标改动导航和进一步阅读入口。
 - GitHub Pages 发布流程改为上传 `dist-pages/`，其中包含 `web/`、`art/` 和 `public/`，避免线上缺少本地美术资源。
 - 更新 `ARCHITECTURE.md`、`TASKS.md` 和 `.github_pages.md`，同步当前部署方式和后续资源可访问性检查任务。
+- 增加 `web/tests/deploy-assets.test.mjs`，用 Node 测试保护 Pages artifact 目录策略和关键运行时图片路径。
+- 在 `docs/launch_goal.md` 中补充上线前手动 QA 清单，覆盖启动布局、核心操作、红眼/失败/通关、商店和线上资源。
 
 ## 2026-06-06
 
