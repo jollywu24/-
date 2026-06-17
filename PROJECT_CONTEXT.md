@@ -33,7 +33,7 @@ node --test web/tests/logic-pure.test.mjs web/tests/architecture-modules.test.mj
 git diff --check
 ```
 
-浏览器流程测试位于 `web/tests/browser-flow.test.mjs`。它需要本机存在 `google-chrome`，并允许启动本地 HTTP 服务与无头浏览器；在 Codex 桌面沙箱中可能因为子进程/浏览器启动限制失败，应结合本机环境判断。
+浏览器流程测试位于 `web/tests/browser-flow.test.mjs`。它会自动查找 `CHROME_BIN`、Chrome 或 Edge，并允许启动本地 HTTP 服务与无头浏览器；在 Codex 桌面沙箱中可能因为子进程/浏览器启动限制失败，应结合本机环境判断。
 
 浏览器流程测试会在 `?debug=1` 下启用 `window.AbyssDebug`，用于把局面稳定推进到红眼、通关、商店和失败分支。正常游玩 URL 不会暴露该调试接口。
 

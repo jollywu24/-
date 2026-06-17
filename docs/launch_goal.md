@@ -124,7 +124,7 @@ Steam 愿望单目标为首轮验证目标：
 | --- | --- | --- |
 | P0 | 修复 GitHub Pages 资源发布 | artifact 包含 `web/`、`art/`、`public/`，并由 `web/tests/deploy-assets.test.mjs` 保护 |
 | P0 | 建立上线 QA 清单 | 本文件 P0 冒烟项能逐条验收 |
-| P0 | 确认浏览器流程测试环境 | 能跑通，或记录当前环境限制与手动替代 |
+| P0 | 确认浏览器流程测试环境 | `web/tests/browser-flow.test.mjs` 能自动定位 Chrome/Edge 并跑通，或记录当前环境限制与手动替代 |
 | P1 | 产出 Steam 文案草案 | 一句话、短描述、长描述和标签建议齐全 |
 | P1 | 产出截图和短视频 shot list | 每个镜头有画面状态、要展示的信息和触发方式 |
 | P1 | 整理美术资产缺口 | 胶囊图、截图补光、卡面、图标分开列 |

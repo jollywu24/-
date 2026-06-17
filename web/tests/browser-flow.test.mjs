@@ -1,9 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createServer } from 'node:http';
-import { spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { createServer as createHttpServer } from 'node:http';
+import { createServer as createNetServer } from 'node:net';
 import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -17,7 +19,7 @@ const mimeTypes = {
 };
 
 function startServer() {
-  const server = createServer(async (request, response) => {
+  const server = createHttpServer(async (request, response) => {
     try {
       const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
       const relative = normalize(pathname).replace(/^(\.\.[/\\])+/, '').replace(/^[/\\]/, '');
@@ -33,21 +35,117 @@ function startServer() {
   return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server)));
 }
 
-function waitForDevTools(chrome) {
+function findOpenPort() {
+  const server = createNetServer();
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Chrome DevTools 启动超时')), 10000);
-    chrome.stderr.setEncoding('utf8');
-    chrome.stderr.on('data', (chunk) => {
-      const match = chunk.match(/DevTools listening on ws:\/\/127\.0\.0\.1:(\d+)\//);
-      if (!match) return;
-      clearTimeout(timer);
-      resolve(Number(match[1]));
-    });
-    chrome.once('exit', (code) => {
-      clearTimeout(timer);
-      reject(new Error(`Chrome 提前退出，状态码 ${code}`));
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const port = server.address().port;
+      server.close(() => resolve(port));
     });
   });
+}
+
+function browserCandidates() {
+  const candidates = [];
+  if (process.env.CHROME_BIN) candidates.push(process.env.CHROME_BIN);
+  if (process.platform === 'win32') {
+    candidates.push(
+      join(process.env.ProgramFiles || '', 'Google/Chrome/Application/chrome.exe'),
+      join(process.env['ProgramFiles(x86)'] || '', 'Google/Chrome/Application/chrome.exe'),
+      join(process.env.LOCALAPPDATA || homedir(), 'Google/Chrome/Application/chrome.exe'),
+      join(process.env.ProgramFiles || '', 'Microsoft/Edge/Application/msedge.exe'),
+      join(process.env['ProgramFiles(x86)'] || '', 'Microsoft/Edge/Application/msedge.exe'),
+      join(process.env.LOCALAPPDATA || homedir(), 'Microsoft/Edge/Application/msedge.exe'),
+    );
+  }
+  candidates.push('google-chrome', 'google-chrome-stable', 'chromium-browser', 'chromium', 'chrome', 'msedge');
+  return candidates.filter(Boolean);
+}
+
+function resolveBrowserExecutable() {
+  return browserCandidates().find((candidate) => {
+    if (/[/\\]/.test(candidate) || /^[A-Za-z]:/.test(candidate)) return existsSync(candidate);
+    return true;
+  });
+}
+
+function launchBrowser(url, profileDir, devToolsPort) {
+  const executable = resolveBrowserExecutable();
+  assert.ok(executable, '未找到可用的 Chrome 或 Edge；可通过 CHROME_BIN 指定浏览器路径');
+
+  const chrome = spawn(executable, [
+    '--headless=new',
+    '--no-sandbox',
+    '--disable-gpu',
+    '--disable-dev-shm-usage',
+    '--disable-background-networking',
+    '--disable-extensions',
+    '--disable-sync',
+    '--no-first-run',
+    '--remote-debugging-address=127.0.0.1',
+    `--remote-debugging-port=${devToolsPort}`,
+    `--user-data-dir=${profileDir}`,
+    url,
+  ], { stdio: ['ignore', 'ignore', 'pipe'] });
+
+  let launchError = null;
+  let output = '';
+  chrome.once('error', (error) => { launchError = error; });
+  chrome.stderr.setEncoding('utf8');
+  chrome.stderr.on('data', (chunk) => {
+    output = `${output}${chunk}`.slice(-4000);
+  });
+
+  return {
+    chrome,
+    executable,
+    get launchError() {
+      return launchError;
+    },
+    output: () => output,
+  };
+}
+
+async function waitForDevTools(port, browser) {
+  const deadline = Date.now() + 15000;
+  let exitCode = null;
+  browser.chrome.once('exit', (code) => {
+    exitCode = code;
+  });
+
+  while (Date.now() < deadline) {
+    if (browser.launchError) {
+      throw new Error(`无法启动浏览器 ${browser.executable}：${browser.launchError.message}`);
+    }
+    if (exitCode !== null) {
+      throw new Error(`浏览器提前退出，状态码 ${exitCode}\n${browser.output()}`);
+    }
+    const version = await fetch(`http://127.0.0.1:${port}/json/version`)
+      .then((response) => (response.ok ? response.json() : null))
+      .catch(() => null);
+    if (version?.Browser) return;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+
+  throw new Error(`Chrome DevTools 启动超时：${browser.executable}\n${browser.output()}`);
+}
+
+async function stopBrowser(chrome) {
+  if (!chrome || chrome.exitCode !== null) return;
+  if (process.platform === 'win32' && chrome.pid) {
+    await new Promise((resolve) => {
+      execFile('taskkill', ['/PID', String(chrome.pid), '/T', '/F'], () => resolve());
+    });
+  } else {
+    chrome.kill('SIGTERM');
+  }
+
+  await Promise.race([
+    new Promise((resolve) => chrome.once('exit', resolve)),
+    new Promise((resolve) => setTimeout(resolve, 1000)),
+  ]);
+  if (chrome.exitCode === null) chrome.kill('SIGKILL');
 }
 
 async function waitForPageTarget(port) {
@@ -138,59 +236,39 @@ async function withBrowser(pathAndQuery, callback) {
   const profileDir = await mkdtemp(join(tmpdir(), 'abyss-browser-test-'));
   const port = server.address().port;
   const url = `http://127.0.0.1:${port}${pathAndQuery}`;
-  const chrome = spawn(process.env.CHROME_BIN || 'google-chrome', [
-    '--headless=new',
-    '--no-sandbox',
-    '--disable-gpu',
-    '--disable-dev-shm-usage',
-    '--remote-debugging-address=127.0.0.1',
-    '--remote-debugging-port=0',
-    `--user-data-dir=${profileDir}`,
-    url,
-  ], { stdio: ['ignore', 'ignore', 'pipe'] });
+  const devToolsPort = await findOpenPort();
+  const browser = launchBrowser(url, profileDir, devToolsPort);
 
   let cdp;
   try {
-    const devToolsPort = await waitForDevTools(chrome);
+    await waitForDevTools(devToolsPort, browser);
     cdp = await connectCdp(await waitForPageTarget(devToolsPort));
     await cdp.send('Runtime.enable');
     await cdp.send('Log.enable');
     await callback(cdp, url);
   } finally {
     cdp?.close();
-    chrome.kill('SIGTERM');
-    await Promise.race([
-      new Promise((resolve) => chrome.once('exit', resolve)),
-      new Promise((resolve) => setTimeout(resolve, 1000)),
-    ]);
-    if (chrome.exitCode === null) {
-      chrome.kill('SIGKILL');
-      await new Promise((resolve) => chrome.once('exit', resolve));
-    }
+    await stopBrowser(browser.chrome);
     await new Promise((resolve) => server.close(resolve));
     await rm(profileDir, { recursive: true, force: true });
   }
 }
+
+test('浏览器流程测试可以定位 headless Chrome 或 Edge', () => {
+  assert.ok(resolveBrowserExecutable(), '未找到可用的 Chrome 或 Edge；可通过 CHROME_BIN 指定浏览器路径');
+});
 
 test('固定 seed 浏览器流程保持初始化、换牌和摊牌行为', { timeout: 40000 }, async () => {
   const server = await startServer();
   const profileDir = await mkdtemp(join(tmpdir(), 'abyss-browser-test-'));
   const port = server.address().port;
   const url = `http://127.0.0.1:${port}/web/?seed=flow-regression`;
-  const chrome = spawn(process.env.CHROME_BIN || 'google-chrome', [
-    '--headless=new',
-    '--no-sandbox',
-    '--disable-gpu',
-    '--disable-dev-shm-usage',
-    '--remote-debugging-address=127.0.0.1',
-    '--remote-debugging-port=0',
-    `--user-data-dir=${profileDir}`,
-    url,
-  ], { stdio: ['ignore', 'ignore', 'pipe'] });
+  const devToolsPort = await findOpenPort();
+  const browser = launchBrowser(url, profileDir, devToolsPort);
 
   let cdp;
   try {
-    const devToolsPort = await waitForDevTools(chrome);
+    await waitForDevTools(devToolsPort, browser);
     cdp = await connectCdp(await waitForPageTarget(devToolsPort));
     await cdp.send('Runtime.enable');
     await cdp.send('Log.enable');
@@ -234,15 +312,7 @@ test('固定 seed 浏览器流程保持初始化、换牌和摊牌行为', { tim
     assert.equal(cdp.events.filter((event) => event.method === 'Runtime.exceptionThrown').length, 0);
   } finally {
     cdp?.close();
-    chrome.kill('SIGTERM');
-    await Promise.race([
-      new Promise((resolve) => chrome.once('exit', resolve)),
-      new Promise((resolve) => setTimeout(resolve, 1000)),
-    ]);
-    if (chrome.exitCode === null) {
-      chrome.kill('SIGKILL');
-      await new Promise((resolve) => chrome.once('exit', resolve));
-    }
+    await stopBrowser(browser.chrome);
     await new Promise((resolve) => server.close(resolve));
     await rm(profileDir, { recursive: true, force: true });
   }
@@ -254,10 +324,8 @@ test('调试流程覆盖红眼下注、通关结算、商店和爆牌失败', { 
 
     await evaluate(cdp, `window.AbyssDebug.setTilt(100)`);
     await waitFor(cdp, `window.AbyssDebug.snapshot().redEyeUnlocked === true`);
-    await evaluate(cdp, `document.querySelector('.red-eye-entry').click()`);
-    await waitFor(cdp, `document.querySelector('.red-eye-modal').classList.contains('show')`);
-    await evaluate(cdp, `document.querySelector('.red-eye-option-card').click()`);
-    await waitFor(cdp, `window.AbyssDebug.snapshot().activeRedEyeBet !== null && !document.querySelector('.red-eye-modal').classList.contains('show')`);
+    await evaluate(cdp, `window.AbyssDebug.selectRedEyeBet('borrow')`);
+    await waitFor(cdp, `window.AbyssDebug.snapshot().activeRedEyeBet === 'borrow' && !document.querySelector('.red-eye-modal').classList.contains('show')`);
 
     await evaluate(cdp, `window.AbyssDebug.setTargetScore(1); window.AbyssDebug.selectFirstCards(1);`);
     await evaluate(cdp, `document.querySelector('.showdown-button').click()`);
@@ -266,6 +334,7 @@ test('调试流程覆盖红眼下注、通关结算、商店和爆牌失败', { 
     assert.equal(clearSnapshot.phase, 'roundClear');
     assert.equal(clearSnapshot.activeRedEyeBet, null);
     assert.equal(clearSnapshot.redEyeUsedThisRound, true);
+    assert.equal(clearSnapshot.pendingNextRoundTiltBonus, 25);
     assert.equal(clearSnapshot.roundClearVisible, true);
 
     await evaluate(cdp, `document.querySelector('.round-clear-continue').click()`);
@@ -279,13 +348,25 @@ test('调试流程覆盖红眼下注、通关结算、商店和爆牌失败', { 
     await waitFor(cdp, `window.AbyssDebug.snapshot().ownedGhostCount === 1 && document.querySelectorAll('.owned-ghost-card').length === 1`);
     await evaluate(cdp, `document.querySelector('button[data-shop-pack]').click()`);
     await waitFor(cdp, `document.querySelectorAll('.shop-pack-product.shop-product-sold').length >= 1`);
+    const afterShopPurchaseSnapshot = await evaluate(cdp, `window.AbyssDebug.snapshot()`);
+    assert.equal(afterShopPurchaseSnapshot.pendingNextRoundTiltBonus, 25);
 
     await evaluate(cdp, `document.querySelector('.shop-next-button').click()`);
-    await waitFor(cdp, `window.AbyssDebug.snapshot().phase === 'playing' && window.AbyssDebug.snapshot().roundIndex === 1 && !document.querySelector('.shop-stage').classList.contains('show') && !document.querySelector('.drawing-card')`, 25000);
+    await waitFor(cdp, `(() => {
+      const snapshot = window.AbyssDebug.snapshot();
+      return snapshot.phase === 'playing'
+        && snapshot.roundIndex === 1
+        && snapshot.settling === false
+        && snapshot.redEyeUsedThisRound === false
+        && !document.querySelector('.shop-stage').classList.contains('show')
+        && !document.querySelector('.drawing-card');
+    })()`, 25000);
     const nextRoundSnapshot = await evaluate(cdp, `window.AbyssDebug.snapshot()`);
     assert.equal(nextRoundSnapshot.roundIndex, 1);
     assert.equal(nextRoundSnapshot.redEyeUsedThisRound, false);
     assert.equal(nextRoundSnapshot.activeRedEyeBet, null);
+    assert.equal(nextRoundSnapshot.pendingNextRoundTiltBonus, 0);
+    assert.equal(nextRoundSnapshot.currentTilt, Math.min(160, afterShopPurchaseSnapshot.currentTilt + 25));
 
     await evaluate(cdp, `window.AbyssDebug.setTargetScore(999999); window.AbyssDebug.setTilt(159); window.AbyssDebug.selectFirstCards(1);`);
     await evaluate(cdp, `document.querySelector('.showdown-button').click()`);

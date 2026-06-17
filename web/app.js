@@ -764,6 +764,8 @@
           ownedGhostCount: state.ownedGhosts.length,
           deckCount: state.deck.length,
           discardCount: state.discardPile.length,
+          pendingNextRoundTiltBonus: state.pendingNextRoundTiltBonus,
+          pendingNextRoundTiltOverride: state.pendingNextRoundTiltOverride,
           handIds: state.hand.map((card) => card.deckId),
           selectedCount: state.selectedIds.size,
           roundClearVisible: roundClearOverlay.classList.contains("show"),
@@ -802,6 +804,17 @@
         handCards.forEach((card) => card.classList.toggle("selected", state.selectedIds.has(card.dataset.uid)));
         updatePreview();
         updateActionButtons();
+      },
+      selectRedEyeBet(id) {
+        if (state.phase !== "playing" || state.settling || state.redEyeUsedThisRound || state.activeRedEyeBet) return false;
+        const bet = redEyeBets[id];
+        if (!bet) return false;
+        state.redEyeUnlocked = false;
+        state.activeRedEyeBet = bet;
+        state.redEyeOfferIds = [id];
+        closeRedEyeModal();
+        showRedEyeStatus();
+        return true;
       }
     };
   }
@@ -1786,7 +1799,7 @@
     state.phase = "playing";
     state.roundIndex += 1;
     state.currentTargetScore = targetScores[state.roundIndex] ?? Math.round(state.currentTargetScore * 2.1);
-    state.discardPile.push(...hand.filter(Boolean));
+    state.discardPile.push(...state.hand.filter(Boolean));
     resetRedEyeForNextRound();
     redEyeEntry.classList.remove("round-failed");
     const normalNextTilt = state.currentTilt + state.pendingNextRoundTiltBonus;
@@ -1859,6 +1872,7 @@
     const burstFailure = checkFailureAfterScoring(result);
     updateCounts();
     if (burstFailure?.type === "bustCard") {
+      consumeActiveRedEyeBetAfterShowdown();
       await animateBustCard();
       showFailureOverlay("bustCard", {
         currentScore: state.currentScore,
@@ -1882,12 +1896,14 @@
       const reward = calculateRoundReward({
         flipBonus: calculateFlipDealerBonus(clearsTarget)
       });
+      consumeActiveRedEyeBetAfterShowdown();
       await wait(240);
       await clearPlayedCardsAfterScore();
       await showRoundClearOverlay(reward);
     } else {
       const scoringFailure = checkFailureAfterScoring(result, state.currentScore);
       if (scoringFailure?.type === "houseTakes") {
+        consumeActiveRedEyeBetAfterShowdown();
         await animateHouseTakes();
         showFailureOverlay("houseTakes", {
           currentScore: state.currentScore,

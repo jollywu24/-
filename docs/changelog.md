@@ -10,6 +10,9 @@
 - 更新 `ARCHITECTURE.md`、`TASKS.md` 和 `.github_pages.md`，同步当前部署方式和后续资源可访问性检查任务。
 - 增加 `web/tests/deploy-assets.test.mjs`，用 Node 测试保护 Pages artifact 目录策略和关键运行时图片路径。
 - 在 `docs/launch_goal.md` 中补充上线前手动 QA 清单，覆盖启动布局、核心操作、红眼/失败/通关、商店和线上资源。
+- 改进 `web/tests/browser-flow.test.mjs` 的浏览器启动方式，自动查找 Chrome/Edge，并用固定 DevTools 端口提升测试可诊断性。
+- 修正红眼赌注在通关结算、爆牌失败或庄家通吃分支中未及时清除的问题，确保红眼赌注只绑定下一次摊牌。
+- 修正商店进入下一轮时引用不存在的 `hand` 变量导致流程卡死的问题，并用浏览器流程测试覆盖。
 
 ## 2026-06-06
 
