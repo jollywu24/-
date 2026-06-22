@@ -93,7 +93,7 @@ test('Web MVP 测试工作流保护语法、规则、部署资源和浏览器流
 
   assert.match(workflow, /name: Web MVP Tests/);
   assert.match(workflow, /actions\/setup-node@v4/);
-  assert.match(workflow, /node-version: "20"/);
+  assert.match(workflow, /node-version: "22"/);
   assert.match(workflow, /CHROME_BIN/);
   assert.match(workflow, /node --check web\/app\.js/);
   assert.match(workflow, /node --check web\/logic-pure\.js/);

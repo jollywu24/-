@@ -251,7 +251,7 @@ discardSelectedCards
 
 该浏览器测试在 `?debug=1` 下启用 `window.AbyssDebug`，只用于测试环境稳定设置目标分、上头值、剩余次数和选中手牌。正常游玩不会暴露该接口。
 
-GitHub Actions 中的 `.github/workflows/test-web.yml` 会在推送到 `main`、Pull Request 和手动触发时运行同一套公开试玩基线：
+GitHub Actions 中的 `.github/workflows/test-web.yml` 使用 Node `22`，会在推送到 `main`、Pull Request 和手动触发时运行同一套公开试玩基线：
 
 - `node --check web/app.js`
 - `node --check web/logic-pure.js`
