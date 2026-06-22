@@ -16,6 +16,7 @@
 - 扩展 `docs/launch_goal.md` 的 Steam 愿望单转化材料，补充商店页文案草案、标签建议、截图/短视频脚本、胶囊图需求和反馈收集入口。
 - 明确截图、浏览器 QA 和资源处理优先使用现成工具，不在项目中重复维护通用截图脚本。
 - 将上线目标进一步拆成 Gate A 公开试玩、Gate B Steam Coming Soon、Gate C 1000 愿望单验证三道发布闸门，并记录当前证据与待确认项。
+- 补齐 Gate A 的版本定位证据：运行时保留 `window.__BUILD_SHA__ || 'dev'` 占位，Debug 快照暴露 `buildSha`，部署测试保护 Pages SHA 注入步骤。
 
 ## 2026-06-06
 

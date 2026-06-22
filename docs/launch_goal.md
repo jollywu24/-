@@ -49,6 +49,7 @@ Steam 愿望单目标为首轮验证目标：
 - `web/tests/logic-pure.test.mjs` 覆盖单手结算、上头值、红眼赌注、暗涌、赌鬼和 Boss 接口。
 - `web/tests/architecture-modules.test.mjs` 覆盖运行时状态、回合规则和收益规则。
 - `web/tests/deploy-assets.test.mjs` 覆盖 Pages artifact 目录策略和关键运行时图片路径。
+- `web/tests/deploy-assets.test.mjs` 保护 Pages 构建 SHA 注入步骤，`?debug=1` 下的 `AbyssDebug.snapshot().buildSha` 可用于反馈定位版本。
 - `web/tests/browser-flow.test.mjs` 覆盖固定 seed 的初始化、换牌、摊牌、红眼下注、通关结算、商店、爆牌和庄家通吃。
 
 待补证据：

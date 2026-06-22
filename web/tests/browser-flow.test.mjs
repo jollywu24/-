@@ -321,6 +321,7 @@ test('固定 seed 浏览器流程保持初始化、换牌和摊牌行为', { tim
 test('调试流程覆盖红眼下注、通关结算、商店和爆牌失败', { timeout: 60000 }, async () => {
   await withBrowser('/web/?seed=flow-branches&debug=1', async (cdp) => {
     await waitFor(cdp, `window.AbyssDebug && document.readyState === 'complete' && document.querySelectorAll('.hand-card[data-deck-id]').length === 8 && !document.querySelector('.drawing-card')`);
+    assert.equal(await evaluate(cdp, `window.AbyssDebug.snapshot().buildSha`), 'dev');
 
     await evaluate(cdp, `window.AbyssDebug.setTilt(100)`);
     await waitFor(cdp, `window.AbyssDebug.snapshot().redEyeUnlocked === true`);

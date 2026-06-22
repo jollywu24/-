@@ -17,11 +17,21 @@ function assertProjectFileExists(path) {
 test('Pages 发布产物包含 Web 入口与运行时资源目录', () => {
   const workflow = readProjectFile('.github/workflows/deploy-pages.yml');
 
+  assert.match(workflow, /Inject build SHA/);
+  assert.match(workflow, /window\.__BUILD_SHA__ \\\|\\\| 'dev'/);
   assert.match(workflow, /mkdir -p dist-pages/);
   assert.match(workflow, /cp -R web dist-pages\/web/);
   assert.match(workflow, /cp -R art dist-pages\/art/);
   assert.match(workflow, /cp -R public dist-pages\/public/);
   assert.match(workflow, /path:\s+\.\/dist-pages/);
+});
+
+test('运行时代码暴露可定位的构建 SHA 调试信息', () => {
+  const app = readProjectFile('web/app.js');
+
+  assert.match(app, /window\.__BUILD_SHA__ \|\| 'dev'/);
+  assert.match(app, /buildSha/);
+  assert.match(app, /AbyssDebug/);
 });
 
 test('线上试玩关键资源路径存在于发布 artifact 对应目录', () => {

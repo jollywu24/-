@@ -11,6 +11,7 @@
   const DISCARD_REWARD = 2;
   const SHOP_REROLL_COST = 5;
   const MAX_OWNED_GHOSTS = 5;
+  const buildSha = window.__BUILD_SHA__ || 'dev';
   const logic = window.GameLogic;
   const content = window.GameContent;
   const roundRules = window.GameRoundRules;
@@ -766,6 +767,7 @@
           discardCount: state.discardPile.length,
           pendingNextRoundTiltBonus: state.pendingNextRoundTiltBonus,
           pendingNextRoundTiltOverride: state.pendingNextRoundTiltOverride,
+          buildSha,
           handIds: state.hand.map((card) => card.deckId),
           selectedCount: state.selectedIds.size,
           roundClearVisible: roundClearOverlay.classList.contains("show"),
