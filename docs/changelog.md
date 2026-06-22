@@ -18,6 +18,7 @@
 - 将上线目标进一步拆成 Gate A 公开试玩、Gate B Steam Coming Soon、Gate C 1000 愿望单验证三道发布闸门，并记录当前证据与待确认项。
 - 补齐 Gate A 的版本定位证据：运行时保留 `window.__BUILD_SHA__ || 'dev'` 占位，Debug 快照暴露 `buildSha`，部署测试保护 Pages SHA 注入步骤。
 - 记录 `2026-06-22` 线上 Pages HTTP 冒烟结果：`/web/` 和关键图片资源均返回 `200 OK`，同时保留最新 `main` 推送后复查任务。
+- 推送最新 `main` 后确认 Pages workflow 对 `9151a0c` 部署成功，并复查线上入口、关键图片资源和 `app.js` build SHA 注入结果。
 
 ## 2026-06-06
 

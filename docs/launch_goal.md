@@ -52,10 +52,10 @@ Steam 愿望单目标为首轮验证目标：
 - `web/tests/deploy-assets.test.mjs` 保护 Pages 构建 SHA 注入步骤，`?debug=1` 下的 `AbyssDebug.snapshot().buildSha` 可用于反馈定位版本。
 - `web/tests/browser-flow.test.mjs` 覆盖固定 seed 的初始化、换牌、摊牌、红眼下注、通关结算、商店、爆牌和庄家通吃。
 - `2026-06-22` 已对当前线上 Pages 入口执行 HTTP 冒烟检查：`/web/`、`/art/shop.png`、`/public/assets/ui/cards/deck_back.png`、`/public/assets/ui/panel/game_table_bg.png` 均返回 `200 OK`。
+- `2026-06-22` 推送最新 `main` 后，GitHub Actions `Deploy Web MVP to GitHub Pages` 对 `9151a0c` 部署成功；复查线上 `/web/` 与上述关键资源均为 `200 OK`，线上 `web/app.js` 已注入 `const buildSha = window.__BUILD_SHA__ || '9151a0c';`。
 
 待补证据：
 
-- 最新 `main` 推送后的 Pages 重新部署与冒烟检查。本次线上检查证明现有部署资源可访问，但本地 `main` 当时仍领先 `origin/main`。
 - 手动 QA 记录，尤其是手机横屏和截图状态。
 - 当前上头值普通摊牌公式仍需确认：现有实现为“有效牌点数 + 牌型上头”，此前曾讨论过“只算有效牌点数”。
 
