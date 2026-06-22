@@ -51,12 +51,13 @@ Steam 愿望单目标为首轮验证目标：
 - `web/tests/deploy-assets.test.mjs` 覆盖 Pages artifact 目录策略和关键运行时图片路径。
 - `web/tests/deploy-assets.test.mjs` 保护 Pages 构建 SHA 注入步骤，`?debug=1` 下的 `AbyssDebug.snapshot().buildSha` 可用于反馈定位版本。
 - `web/tests/browser-flow.test.mjs` 覆盖固定 seed 的初始化、换牌、摊牌、红眼下注、通关结算、商店、爆牌和庄家通吃。
+- `web/tests/browser-flow.test.mjs` 覆盖桌面 `1600 x 900` 和手机横屏 `932 x 430` 的固定画布布局，检查页面无滚动、手牌不压到右侧操作区、右侧操作区不越出棋盘。
 - `2026-06-22` 已对当前线上 Pages 入口执行 HTTP 冒烟检查：`/web/`、`/art/shop.png`、`/public/assets/ui/cards/deck_back.png`、`/public/assets/ui/panel/game_table_bg.png` 均返回 `200 OK`。
 - `2026-06-22` 推送最新 `main` 后，GitHub Actions `Deploy Web MVP to GitHub Pages` 对 `9151a0c` 部署成功；复查线上 `/web/` 与上述关键资源均为 `200 OK`，线上 `web/app.js` 已注入 `const buildSha = window.__BUILD_SHA__ || '9151a0c';`。
 
 待补证据：
 
-- 手动 QA 记录，尤其是手机横屏和截图状态。
+- 手动 QA 记录，尤其是真机手机横屏和截图状态；当前已有 headless 浏览器布局断言作为自动化证据。
 - 当前上头值普通摊牌公式仍需确认：现有实现为“有效牌点数 + 牌型上头”，此前曾讨论过“只算有效牌点数”。
 
 ### Gate B：Steam Coming Soon 闸门
@@ -378,7 +379,7 @@ Steam 愿望单目标为首轮验证目标：
 - 打开 `/web/` 后没有白屏或脚本报错。
 - 画布保持 `1600 x 900` 等比缩放，没有页面滚动条。
 - 左侧信息栏、顶部赌鬼区、中央出牌区、底部手牌区、右侧操作区都在预期位置。
-- 手机横屏视口下手牌和右侧操作区没有越界。
+- 手机横屏视口下手牌和右侧操作区没有越界；自动化布局用例覆盖 `932 x 430`，真机仍需人工复核可读性。
 - 主要图片资源可见：桌面背景、普通牌背、红眼入口、上头眼睛、暗涌牌。
 
 ### 核心操作

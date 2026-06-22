@@ -231,6 +231,81 @@ const snapshotExpression = `(() => ({
   discardCount: document.querySelectorAll('.count-stack strong')[1].textContent.trim()
 }))()`;
 
+const layoutSnapshotExpression = `(() => {
+  const rectOf = (selector) => {
+    const rect = document.querySelector(selector).getBoundingClientRect();
+    return {
+      left: rect.left,
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+      width: rect.width,
+      height: rect.height,
+    };
+  };
+  const cardRects = [...document.querySelectorAll('.hand-card[data-deck-id]')].map((card) => {
+    const rect = card.getBoundingClientRect();
+    return {
+      left: rect.left,
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+      width: rect.width,
+      height: rect.height,
+    };
+  });
+  const minCardLeft = Math.min(...cardRects.map((rect) => rect.left));
+  const maxCardRight = Math.max(...cardRects.map((rect) => rect.right));
+  const minCardTop = Math.min(...cardRects.map((rect) => rect.top));
+  const maxCardBottom = Math.max(...cardRects.map((rect) => rect.bottom));
+  return {
+    innerWidth,
+    innerHeight,
+    scrollWidth: document.documentElement.scrollWidth,
+    scrollHeight: document.documentElement.scrollHeight,
+    viewport: rectOf('.viewport'),
+    board: rectOf('.game-board'),
+    handZone: rectOf('.hand-zone'),
+    rightPanel: rectOf('.right-panel'),
+    handCards: { minCardLeft, maxCardRight, minCardTop, maxCardBottom, count: cardRects.length },
+  };
+})()`;
+
+async function loadViewport(cdp, url, { width, height, mobile = false }) {
+  await cdp.send('Emulation.setDeviceMetricsOverride', {
+    width,
+    height,
+    deviceScaleFactor: 1,
+    mobile,
+    screenWidth: width,
+    screenHeight: height,
+    screenOrientation: {
+      type: 'landscapePrimary',
+      angle: 90,
+    },
+  });
+  await cdp.send('Page.enable');
+  await cdp.send('Page.navigate', { url });
+  await waitFor(cdp, `document.readyState === 'complete' && document.querySelectorAll('.hand-card[data-deck-id]').length === 8 && !document.querySelector('.drawing-card')`);
+}
+
+function assertLayoutFits(snapshot, label) {
+  const slack = 2;
+  assert.ok(snapshot.scrollWidth <= snapshot.innerWidth + slack, `${label}: 页面不应横向滚动\n${JSON.stringify(snapshot)}`);
+  assert.ok(snapshot.scrollHeight <= snapshot.innerHeight + slack, `${label}: 页面不应纵向滚动\n${JSON.stringify(snapshot)}`);
+  assert.ok(snapshot.viewport.left >= -slack, `${label}: 视口容器左侧越界\n${JSON.stringify(snapshot)}`);
+  assert.ok(snapshot.viewport.top >= -slack, `${label}: 视口容器顶部越界\n${JSON.stringify(snapshot)}`);
+  assert.ok(snapshot.viewport.right <= snapshot.innerWidth + slack, `${label}: 视口容器右侧越界\n${JSON.stringify(snapshot)}`);
+  assert.ok(snapshot.viewport.bottom <= snapshot.innerHeight + slack, `${label}: 视口容器底部越界\n${JSON.stringify(snapshot)}`);
+  assert.equal(snapshot.handCards.count, 8, `${label}: 应显示 8 张手牌`);
+  assert.ok(snapshot.handCards.minCardLeft >= snapshot.board.left - slack, `${label}: 手牌左侧越出棋盘\n${JSON.stringify(snapshot)}`);
+  assert.ok(snapshot.handCards.maxCardRight <= snapshot.rightPanel.left - slack, `${label}: 手牌压到右侧操作区\n${JSON.stringify(snapshot)}`);
+  assert.ok(snapshot.handCards.minCardTop >= snapshot.board.top - slack, `${label}: 手牌顶部越出棋盘\n${JSON.stringify(snapshot)}`);
+  assert.ok(snapshot.handCards.maxCardBottom <= snapshot.board.bottom + slack, `${label}: 手牌底部越出棋盘\n${JSON.stringify(snapshot)}`);
+  assert.ok(snapshot.rightPanel.right <= snapshot.board.right + slack, `${label}: 右侧操作区越出棋盘\n${JSON.stringify(snapshot)}`);
+  assert.ok(snapshot.rightPanel.bottom <= snapshot.board.bottom + slack, `${label}: 右侧操作区底部越出棋盘\n${JSON.stringify(snapshot)}`);
+}
+
 async function withBrowser(pathAndQuery, callback) {
   const server = await startServer();
   const profileDir = await mkdtemp(join(tmpdir(), 'abyss-browser-test-'));
@@ -256,6 +331,21 @@ async function withBrowser(pathAndQuery, callback) {
 
 test('浏览器流程测试可以定位 headless Chrome 或 Edge', () => {
   assert.ok(resolveBrowserExecutable(), '未找到可用的 Chrome 或 Edge；可通过 CHROME_BIN 指定浏览器路径');
+});
+
+test('桌面与手机横屏布局保持固定 16:9 画布且不越界', { timeout: 40000 }, async () => {
+  await withBrowser('/web/?seed=layout-gate-a', async (cdp, url) => {
+    const cases = [
+      { label: 'desktop-1600x900', width: 1600, height: 900, mobile: false },
+      { label: 'phone-landscape-932x430', width: 932, height: 430, mobile: true },
+    ];
+
+    for (const viewport of cases) {
+      await loadViewport(cdp, url, viewport);
+      const snapshot = await evaluate(cdp, layoutSnapshotExpression);
+      assertLayoutFits(snapshot, viewport.label);
+    }
+  });
 });
 
 test('固定 seed 浏览器流程保持初始化、换牌和摊牌行为', { timeout: 40000 }, async () => {
