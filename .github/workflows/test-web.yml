@@ -1,0 +1,51 @@
+name: Web MVP Tests
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Locate Chrome
+        shell: bash
+        run: |
+          for candidate in google-chrome-stable google-chrome chromium-browser chromium; do
+            if command -v "$candidate" >/dev/null 2>&1; then
+              echo "CHROME_BIN=$(command -v "$candidate")" >> "$GITHUB_ENV"
+              exit 0
+            fi
+          done
+          echo "::error::未找到 Chrome 或 Chromium，无法运行浏览器流程测试"
+          exit 1
+
+      - name: Syntax checks
+        run: |
+          node --check web/app.js
+          node --check web/logic-pure.js
+          node --check web/round-rules.js
+
+      - name: Node tests
+        run: node --test web/tests/logic-pure.test.mjs web/tests/architecture-modules.test.mjs web/tests/deploy-assets.test.mjs
+
+      - name: Browser flow tests
+        run: node --test web/tests/browser-flow.test.mjs
+
+      - name: Whitespace checks
+        run: git diff --check HEAD^ HEAD

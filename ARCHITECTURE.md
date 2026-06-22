@@ -251,6 +251,17 @@ discardSelectedCards
 
 该浏览器测试在 `?debug=1` 下启用 `window.AbyssDebug`，只用于测试环境稳定设置目标分、上头值、剩余次数和选中手牌。正常游玩不会暴露该接口。
 
+GitHub Actions 中的 `.github/workflows/test-web.yml` 会在推送到 `main`、Pull Request 和手动触发时运行同一套公开试玩基线：
+
+- `node --check web/app.js`
+- `node --check web/logic-pure.js`
+- `node --check web/round-rules.js`
+- `node --test web/tests/logic-pure.test.mjs web/tests/architecture-modules.test.mjs web/tests/deploy-assets.test.mjs`
+- `node --test web/tests/browser-flow.test.mjs`
+- `git diff --check HEAD^ HEAD`
+
+工作流会先定位系统里的 Chrome 或 Chromium 并写入 `CHROME_BIN`，避免浏览器流程测试在 CI 中依赖不稳定的命令名。
+
 ## Python CLI 原型
 
 `src/jokermvp/` 是独立早期原型：

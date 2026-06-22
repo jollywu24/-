@@ -52,6 +52,7 @@ Steam 愿望单目标为首轮验证目标：
 - `web/tests/deploy-assets.test.mjs` 保护 Pages 构建 SHA 注入步骤，`?debug=1` 下的 `AbyssDebug.snapshot().buildSha` 可用于反馈定位版本。
 - `web/tests/browser-flow.test.mjs` 覆盖固定 seed 的初始化、换牌、摊牌、红眼下注、通关结算、商店、爆牌和庄家通吃。
 - `web/tests/browser-flow.test.mjs` 覆盖桌面 `1600 x 900` 和手机横屏 `932 x 430` 的固定画布布局，检查页面无滚动、手牌不压到右侧操作区、右侧操作区不越出棋盘。
+- `.github/workflows/test-web.yml` 已接入公开试玩自动化基线，在推送 `main`、Pull Request 和手动触发时运行语法检查、规则/架构/部署资源测试、浏览器流程测试和空白检查。
 - `2026-06-22` 已对当前线上 Pages 入口执行 HTTP 冒烟检查：`/web/`、`/art/shop.png`、`/public/assets/ui/cards/deck_back.png`、`/public/assets/ui/panel/game_table_bg.png` 均返回 `200 OK`。
 - `2026-06-22` 推送最新 `main` 后，GitHub Actions `Deploy Web MVP to GitHub Pages` 对 `9151a0c` 部署成功；复查线上 `/web/` 与上述关键资源均为 `200 OK`，线上 `web/app.js` 已注入 `const buildSha = window.__BUILD_SHA__ || '9151a0c';`。
 - 已接入 GitHub Issue Form 作为公开试玩反馈入口，`web/feedback.html` 提供独立说明页，不改动主游戏界面；反馈字段覆盖试玩入口或版本信息、玩法理解、红眼使用、重开欲望、愿望单意愿和 bug 复现信息。
@@ -121,8 +122,10 @@ Steam 愿望单目标为首轮验证目标：
    - `node --check web/logic-pure.js`
    - `node --check web/round-rules.js`
    - `node --test web/tests/logic-pure.test.mjs web/tests/architecture-modules.test.mjs`
+   - `node --test web/tests/deploy-assets.test.mjs`
+   - `node --test web/tests/browser-flow.test.mjs`
    - `git diff --check`
-   - 浏览器流程测试能在本机或 CI 跑通；若当前环境无法启动无头浏览器，需要保留手动 QA 清单作为替代证据。
+   - `.github/workflows/test-web.yml` 在 GitHub Actions 中运行同一套基线；若当前环境无法启动无头浏览器，需要保留手动 QA 清单作为替代证据。
 
 4. **规则文档一致**
    - 当前规则只看 `docs/component_rules.md` 和领域 README。
