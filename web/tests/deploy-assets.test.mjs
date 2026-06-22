@@ -71,3 +71,19 @@ test('运行时代码仍通过 web 目录的相对路径引用发布资源', () 
   assert.match(index, /\.\.\/art\/vfx\/red-eye-wager-seal\.png/);
   assert.match(assetMap, /\.\.\/public\/assets\/ui/);
 });
+
+test('公开试玩反馈入口可以收集版本、理解成本和愿望单意愿', () => {
+  const issueForm = readProjectFile('.github/ISSUE_TEMPLATE/playtest_feedback.yml');
+  const feedbackPage = readProjectFile('web/feedback.html');
+
+  assert.match(issueForm, /playtest/);
+  assert.match(issueForm, /build_or_url/);
+  assert.match(issueForm, /understood_loop/);
+  assert.match(issueForm, /used_red_eye/);
+  assert.match(issueForm, /restart_desire/);
+  assert.match(issueForm, /wishlist_intent/);
+
+  assert.match(feedbackPage, /playtest_feedback\.yml/);
+  assert.match(feedbackPage, /试玩 URL/);
+  assert.match(feedbackPage, /1000 个愿望单/);
+});

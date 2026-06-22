@@ -32,6 +32,18 @@ http://localhost:8000/web/
 http://localhost:8000/web/?seed=balance-42
 ```
 
+公开试玩反馈：
+
+```text
+https://github.com/jollywu24/-/issues/new?template=playtest_feedback.yml
+```
+
+反馈说明页：
+
+```text
+http://localhost:8000/web/feedback.html
+```
+
 ## 当前核心内容
 
 - 固定 `1600 x 900` 游戏画布，整体等比缩放。
@@ -46,6 +58,7 @@ http://localhost:8000/web/?seed=balance-42
 - 普通关、精英关、Boss 关过关后分别降低 `25`、`35`、`50` 上头值。
 - 通关结算后进入商店，可购买赌鬼、刷新赌鬼、购买卡包入口或降压道具，并进入下一局。
 - 摊牌次数耗尽且未达标时，庄家通吃失败。
+- 公开试玩反馈通过 GitHub Issue Form 收集，覆盖版本信息、玩法理解、红眼使用、重开欲望和愿望单意愿。
 
 ## 有效设计文档
 

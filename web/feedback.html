@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>深渊赌局 试玩反馈</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #070503;
+        --panel: rgba(22, 13, 8, 0.92);
+        --gold: #b89a58;
+        --gold-soft: #d8c58c;
+        --red: #9e2f22;
+        --text: #e4d8bd;
+        --muted: #9c8f73;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 32px;
+        background:
+          radial-gradient(circle at 70% 15%, rgba(135, 42, 24, 0.18), transparent 32%),
+          radial-gradient(circle at 20% 80%, rgba(171, 121, 47, 0.12), transparent 28%),
+          linear-gradient(135deg, #040302, var(--bg) 54%, #0d0705);
+        color: var(--text);
+        font-family: "Microsoft YaHei", "SimSun", serif;
+      }
+
+      main {
+        width: min(720px, 100%);
+        border: 1px solid rgba(184, 154, 88, 0.72);
+        background:
+          linear-gradient(180deg, rgba(87, 23, 14, 0.25), transparent 42%),
+          var(--panel);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.72), inset 0 0 0 1px rgba(255, 230, 160, 0.08);
+        padding: 36px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        color: var(--gold-soft);
+        font-size: 40px;
+        letter-spacing: 0;
+      }
+
+      p {
+        line-height: 1.75;
+        color: var(--muted);
+      }
+
+      strong {
+        color: var(--text);
+      }
+
+      ul {
+        margin: 20px 0;
+        padding-left: 22px;
+        color: var(--text);
+        line-height: 1.8;
+      }
+
+      a.button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 52px;
+        margin-top: 12px;
+        padding: 0 28px;
+        border: 1px solid rgba(226, 159, 74, 0.9);
+        background: linear-gradient(180deg, #8a261a, #4b120d);
+        color: #f4dca2;
+        text-decoration: none;
+        font-size: 22px;
+        font-weight: 700;
+        box-shadow: 0 0 24px rgba(158, 47, 34, 0.34), inset 0 0 18px rgba(255, 210, 112, 0.12);
+      }
+
+      a.button:hover {
+        filter: brightness(1.12);
+      }
+
+      .links {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-top: 24px;
+      }
+
+      .plain-link {
+        color: var(--gold-soft);
+      }
+
+      code {
+        color: #f0bd79;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>深渊赌局 试玩反馈</h1>
+      <p>
+        这份反馈用于判断 MVP 是否已经足够支撑公开试玩，以及是否能服务 Steam 首批
+        <strong>1000 个愿望单</strong>目标。
+      </p>
+      <p>提交前请尽量带上你打开的试玩 URL；如果测试说明提供了 commit 或 build SHA，也一起填上。</p>
+      <ul>
+        <li>你是否在第一局理解了摊牌、换牌和上头值？</li>
+        <li>你有没有主动使用红眼赌注？</li>
+        <li>失败后是否想立刻再开一局？</li>
+        <li>哪些界面、数字或状态最看不懂？</li>
+        <li>如果上 Steam，你会不会愿望单？</li>
+      </ul>
+      <div class="links">
+        <a
+          class="button"
+          href="https://github.com/jollywu24/-/issues/new?template=playtest_feedback.yml"
+        >填写试玩反馈</a>
+        <a class="plain-link" href="./">返回试玩入口</a>
+      </div>
+    </main>
+  </body>
+</html>
