@@ -264,16 +264,11 @@ GitHub Actions 中的 `.github/workflows/test-web.yml` 使用 Node `22`，会在
 
 Pages 发布由 `.github/workflows/deploy-pages.yml` 负责。该工作流会把 `web/`、`art/` 和 `public/` 一起打入 Pages artifact，部署完成后用 `curl` 对线上 `/web/`、`/web/feedback.html`、关键图片资源和 `/web/app.js` 执行冒烟检查，并确认 `web/app.js` 中的构建 SHA 已被注入。
 
-## Python CLI 原型
+## 已移除的 Python CLI 原型
 
-`src/jokermvp/` 是独立早期原型：
+较早的 `src/jokermvp/` Python CLI 原型已经移除。当前可运行产品、规则事实来源和测试边界都以 `web/` 为准。
 
-- 使用 Python 数据类和终端输入。
-- 有自己的牌型数值、商店和 Joker。
-- 不被网页引用。
-- 规则数值与网页版本不同。
-
-建议后续重构时明确将其标记为历史原型、测试工具或删除候选；当前不要把 Web 规则同步到该目录。
+后续不要再把旧 CLI 原型当作规则同步目标。如果需要新的命令行调试工具，应先明确用途、测试边界和与 `web/logic-pure.js` 的复用关系，避免重新维护一套偏离 Web 版本的规则。
 
 ## 部署
 

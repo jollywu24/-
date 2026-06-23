@@ -6,7 +6,7 @@
 
 > 玩家明知道再贪一手可能爆牌，但仍想继续摊牌。
 
-当前主产品是 `web/` 下的原生 HTML/CSS/JavaScript 原型。`src/jokermvp/` 是较早的 Python CLI 原型，不参与网页运行，也不应被视为当前玩法规则的唯一来源。
+当前主产品是 `web/` 下的原生 HTML/CSS/JavaScript 原型。较早的 Python CLI 原型已经移除，当前玩法规则与可运行入口以 `web/` 为准。
 
 ## 快速开始
 
@@ -70,7 +70,6 @@ git diff --check
 | `web/tests/` | 单手规则、架构模块和固定 seed 浏览器流程测试 |
 | `art/` | 主界面参考图、商店图和运行时 VFX 图片资源 |
 | `docs/` | 当前规则、UI 规范、设计令牌、决策记录、历史变更和领域说明 |
-| `src/jokermvp/` | 独立的早期 Python CLI 原型，规则和数值与 Web 版本不同 |
 | `.github/workflows/deploy-pages.yml` | GitHub Pages 发布流程 |
 
 ## 改动导航
