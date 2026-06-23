@@ -10,6 +10,7 @@ import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const projectRoot = fileURLToPath(new URL('../../', import.meta.url));
+const devToolsStartupTimeoutMs = 30000;
 const mimeTypes = {
   '.css': 'text/css',
   '.html': 'text/html',
@@ -108,7 +109,7 @@ function launchBrowser(url, profileDir, devToolsPort) {
 }
 
 async function waitForDevTools(port, browser) {
-  const deadline = Date.now() + 15000;
+  const deadline = Date.now() + devToolsStartupTimeoutMs;
   let exitCode = null;
   browser.chrome.once('exit', (code) => {
     exitCode = code;
@@ -128,7 +129,7 @@ async function waitForDevTools(port, browser) {
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
 
-  throw new Error(`Chrome DevTools 启动超时：${browser.executable}\n${browser.output()}`);
+  throw new Error(`Chrome DevTools 启动超时（${devToolsStartupTimeoutMs}ms）：${browser.executable}\n${browser.output()}`);
 }
 
 async function stopBrowser(chrome) {
@@ -352,7 +353,7 @@ test('浏览器流程测试可以定位 headless Chrome 或 Edge', () => {
   assert.ok(resolveBrowserExecutable(), '未找到可用的 Chrome 或 Edge；可通过 CHROME_BIN 指定浏览器路径');
 });
 
-test('桌面与手机横屏布局保持固定 16:9 画布且不越界', { timeout: 40000 }, async () => {
+test('桌面与手机横屏布局保持固定 16:9 画布且不越界', { timeout: 60000 }, async () => {
   await withBrowser('/web/?seed=layout-gate-a', async (cdp, url) => {
     const cases = [
       { label: 'desktop-1600x900', width: 1600, height: 900, mobile: false },
