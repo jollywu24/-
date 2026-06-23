@@ -99,7 +99,8 @@ Steam 愿望单目标为首轮验证目标：
 当前判断：
 
 - 文案草案、shot list、视频脚本、胶囊图需求和线上反馈入口已经有第一版。
-- 真实首发截图、短视频/GIF、最终胶囊图和真机/人工 QA 记录尚未完成。
+- 首批真实 gameplay 截图已产出到 `art/steam/screenshots/`，可作为 Steam 页面初筛素材。
+- 短视频/GIF、最终胶囊图、Steam 页面实填素材和真机/人工 QA 记录尚未完成。
 
 ## P0：公开试玩前必须完成
 
@@ -237,6 +238,18 @@ Steam 愿望单目标为首轮验证目标：
 | 7 | 商店阶段 | 赌资、赌鬼、降压道具和下一轮入口 | 通关后进入商店 |
 
 首批 Steam 页面至少使用 5 张，其中 1、2、3、4、6 优先。爆牌截图可作为后续替换图，避免第一眼过度负面。
+
+首批实机截图文件（`2026-06-23`）：
+
+- `art/steam/screenshots/01-main-hand.jpg`：主界面与手牌状态。
+- `art/steam/screenshots/02-showdown-settlement.jpg`：摊牌结算中。
+- `art/steam/screenshots/03-red-eye-wager-modal.jpg`：红眼赌注三选一弹窗。
+- `art/steam/screenshots/04-surge-risk.jpg`：红眼赌注后的暗涌翻牌风险。
+- `art/steam/screenshots/05-round-clear.jpg`：本轮过关收益。
+- `art/steam/screenshots/06-shop.jpg`：商店阶段。
+- `art/steam/screenshots/07-bust-failure.jpg`：爆牌失败。
+
+这些截图使用现成 Chrome / DevTools 浏览器能力生成，没有在仓库中新增截图脚本。进入 Steam 实填前仍需做最终筛选、必要裁切压缩和人工可读性复核。
 
 ### 短视频 / GIF 脚本
 

@@ -112,3 +112,5 @@
 - `art/`、`public/assets/` 和 `web/asset-map.js` 中登记的本地图片资产
 
 新增或替换运行时图片时，同步检查资源路径、发布范围和 `public/assets/manifest/ASSET_MANIFEST.md`。
+
+`art/steam/screenshots/` 用于保存 Steam 页面和宣传材料的真实 gameplay 截图，不属于运行时资源；更新该目录不需要登记到 `web/asset-map.js`，但需要在上线目标文档中说明用途和当前状态。

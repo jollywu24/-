@@ -29,6 +29,7 @@
 - 复查 `2009dc8` 的 `Web MVP Tests` 和 Pages 部署均成功，线上试玩入口、反馈页、关键图片资源、`web/app.js` 和 build SHA 均通过 HTTP 冒烟检查。
 - Pages 部署工作流新增部署后线上 URL 冒烟检查，自动验证试玩入口、反馈页、关键图片资源、`web/app.js` 和构建 SHA；部署资源测试同步保护该步骤。
 - 放宽 `web/tests/browser-flow.test.mjs` 的 Chrome DevTools 冷启动等待时间，避免 GitHub runner 首次启动浏览器偏慢时误报失败。
+- 产出首批 Steam 页面真实 gameplay 截图到 `art/steam/screenshots/`，覆盖主界面、摊牌结算、红眼赌注、暗涌翻牌、通关收益、商店和爆牌失败；截图生成使用现成 Chrome / DevTools 能力，没有新增仓库内截图脚本。
 
 ## 2026-06-06
 

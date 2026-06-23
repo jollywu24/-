@@ -14,6 +14,7 @@
 - 已修正 GitHub Pages 发布 artifact，线上发布会同时包含 `web/`、`art/` 和 `public/`。
 - 已增加 `web/tests/deploy-assets.test.mjs`，保护 Pages artifact 目录策略和关键运行时图片路径。
 - 已补充 Steam 愿望单转化材料草案，包括商店页文案、截图/视频镜头、胶囊图需求和反馈入口。
+- 已产出首批真实 gameplay 截图到 `art/steam/screenshots/`，覆盖主界面、摊牌、红眼赌注、暗涌、通关收益、商店和爆牌失败。
 
 ## 最值得优先重构的 3 个点
 
@@ -75,12 +76,13 @@
 **现状**
 
 - `docs/launch_goal.md` 已包含商店页文案草案、截图 shot list、短视频脚本、胶囊图需求和反馈问题。
-- 尚未产出最终截图、视频/GIF、胶囊图和 Steam 页面实填素材。
+- 已产出首批 `1600 x 900` 真实 gameplay 截图到 `art/steam/screenshots/`，可用于 Steam 页面初筛和后续裁切。
+- 尚未完成最终 Steam 审核包、视频/GIF、胶囊图和 Steam 页面实填素材。
 - Steam Coming Soon 闸门要求素材与截图遵守 Steamworks 官方页面要求，商店页送审和公开节奏需要预留时间。
 
 **建议后续执行**
 
-- 按 `docs/launch_goal.md` 的截图清单，用 Browser / Chrome / Edge / Playwright 等现成工具截取 5 张首发截图，不在仓库里新增自制截图脚本。
+- 从 `art/steam/screenshots/` 中筛选至少 5 张首发截图，必要时用 Browser / Chrome / Edge / Playwright 等现成工具补图，不在仓库里新增自制截图脚本。
 - 录制 15-30 秒短视频，优先展示“选牌 -> 上头上涨 -> 红眼赌注 -> 暗涌 -> 结果”。
 - 为胶囊图整理可交付给美术的参考图和标题安全区。
 - 在 Steam 页面实填前复核官方 Store Assets、Coming Soon、Review Process 和 Wishlists 文档。
