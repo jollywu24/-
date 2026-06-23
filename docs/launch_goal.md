@@ -55,9 +55,8 @@ Steam 愿望单目标为首轮验证目标：
 - `.github/workflows/test-web.yml` 已接入公开试玩自动化基线，使用 Node `22`，在推送 `main`、Pull Request 和手动触发时运行语法检查、规则/架构/部署资源测试、浏览器流程测试和空白检查。
 - `2026-06-22` 已对当前线上 Pages 入口执行 HTTP 冒烟检查：`/web/`、`/art/shop.png`、`/public/assets/ui/cards/deck_back.png`、`/public/assets/ui/panel/game_table_bg.png` 均返回 `200 OK`。
 - 已接入 GitHub Issue Form 作为公开试玩反馈入口，`web/feedback.html` 提供独立说明页，不改动主游戏界面；反馈字段覆盖试玩入口或版本信息、玩法理解、红眼使用、重开欲望、愿望单意愿和 bug 复现信息。
-- `2026-06-23` 复查 `9074664`：GitHub Actions `Web MVP Tests` 与 `Deploy Web MVP to GitHub Pages` 均成功；线上 `/web/`、`/web/feedback.html`、`/art/shop.png`、`/public/assets/ui/cards/deck_back.png`、`/public/assets/ui/panel/game_table_bg.png` 均返回 `200 OK`；线上 `web/app.js` 构建 SHA 为 `9074664`。
-- `2026-06-23` 推送 `d80b047` 后，GitHub Actions `Web MVP Tests` 与 `Deploy Web MVP to GitHub Pages` 均成功；当前公开试玩入口、反馈页、关键资源和构建 SHA 注入已有远端 CI 证据。
 - `2026-06-23` 本机重跑 `web/tests/browser-flow.test.mjs` 通过，覆盖桌面与手机横屏布局、初始化、换牌、摊牌、红眼下注、通关结算、商店、爆牌和庄家通吃；测试已对 Windows headless 浏览器 profile 临时文件锁增加清理重试。
+- `2026-06-23` 复查 `2009dc8`：GitHub Actions `Web MVP Tests` 与 `Deploy Web MVP to GitHub Pages` 均成功；线上 `/web/`、`/web/feedback.html`、`/art/shop.png`、`/public/assets/ui/cards/deck_back.png`、`/public/assets/ui/panel/game_table_bg.png` 和 `/web/app.js` 均返回 `200 OK`；线上 `web/app.js` 构建 SHA 为 `2009dc8`。
 
 待补证据：
 
