@@ -148,6 +148,25 @@ async function stopBrowser(chrome) {
   if (chrome.exitCode === null) chrome.kill('SIGKILL');
 }
 
+async function removeBrowserProfile(profileDir) {
+  const retryableCodes = new Set(['EBUSY', 'ENOTEMPTY', 'EPERM']);
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    try {
+      await rm(profileDir, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      if (!retryableCodes.has(error.code)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 100 * (attempt + 1)));
+    }
+  }
+
+  try {
+    await rm(profileDir, { recursive: true, force: true });
+  } catch (error) {
+    if (process.platform !== 'win32' || !retryableCodes.has(error.code)) throw error;
+  }
+}
+
 async function waitForPageTarget(port) {
   const deadline = Date.now() + 10000;
   while (Date.now() < deadline) {
@@ -325,7 +344,7 @@ async function withBrowser(pathAndQuery, callback) {
     cdp?.close();
     await stopBrowser(browser.chrome);
     await new Promise((resolve) => server.close(resolve));
-    await rm(profileDir, { recursive: true, force: true });
+    await removeBrowserProfile(profileDir);
   }
 }
 
@@ -404,7 +423,7 @@ test('固定 seed 浏览器流程保持初始化、换牌和摊牌行为', { tim
     cdp?.close();
     await stopBrowser(browser.chrome);
     await new Promise((resolve) => server.close(resolve));
-    await rm(profileDir, { recursive: true, force: true });
+    await removeBrowserProfile(profileDir);
   }
 });
 

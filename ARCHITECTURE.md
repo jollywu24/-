@@ -247,7 +247,7 @@ discardSelectedCards
 - 集中内容定义、运行时状态和纯回合规则。
 - GitHub Pages artifact 的目录策略和关键运行时图片资源路径。
 
-固定 seed 浏览器测试 `web/tests/browser-flow.test.mjs` 的用例已覆盖初始化、选牌、换牌、摊牌、同 seed 重载一致性、红眼赌注入口、通关结算、商店购买、商店进入下一轮、爆牌失败、庄家通吃和失败后重开。测试会自动查找 `CHROME_BIN`、Chrome 或 Edge，并使用独立 DevTools 端口连接浏览器。后续仍应继续扩充红眼不同赌注、Boss 盲注和多 seed 分支。
+固定 seed 浏览器测试 `web/tests/browser-flow.test.mjs` 的用例已覆盖初始化、选牌、换牌、摊牌、同 seed 重载一致性、红眼赌注入口、通关结算、商店购买、商店进入下一轮、爆牌失败、庄家通吃和失败后重开。测试会自动查找 `CHROME_BIN`、Chrome 或 Edge，并使用独立 DevTools 端口连接浏览器。每个用例使用独立 headless 浏览器 profile；Windows 上如果 Chrome/Edge 退出后仍短暂锁住 Crashpad 或数据库临时文件，测试会重试清理，避免把 profile 清理残留误判成玩法流程失败。后续仍应继续扩充红眼不同赌注、Boss 盲注和多 seed 分支。
 
 该浏览器测试在 `?debug=1` 下启用 `window.AbyssDebug`，只用于测试环境稳定设置目标分、上头值、剩余次数和选中手牌。正常游玩不会暴露该接口。
 

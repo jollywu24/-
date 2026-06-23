@@ -30,11 +30,11 @@
 - 自动测试和浏览器流程测试已有基础覆盖。
 - `docs/launch_goal.md` 已明确 Gate A / B / C 发布闸门。
 - 已完成一次线上 URL 真实 HTTP 冒烟检查，确认当前 Pages 入口和关键图片资源可访问。
-- 已推送最新 `main` 并确认 GitHub Pages 对 `9151a0c` 部署成功，线上入口、关键图片资源和 build SHA 注入均通过复查。
 - 已补充桌面与手机横屏布局自动化 QA，检查固定画布无滚动、手牌不压右侧操作区、右侧操作区不越界。
 - 已接入 GitHub Issue Form 和独立反馈说明页，用于收集版本信息、玩法理解、红眼使用、重开欲望和愿望单意愿。
 - 已新增 `Web MVP Tests` GitHub Actions 工作流，在主干、PR 和手动触发时运行语法检查、Node 测试、浏览器流程测试和空白检查。
-- 已复查 `9074664` 的 `Web MVP Tests` 与 Pages 部署均成功，线上入口、反馈页、关键资源和 build SHA 均通过 HTTP 冒烟。
+- 已复查 `d80b047` 的 `Web MVP Tests` 与 Pages 部署均成功，线上入口、反馈页、关键资源和 build SHA 注入已有远端 CI 证据。
+- 已修复 Windows headless 浏览器 profile 清理偶发 `EBUSY` 导致测试误失败的问题，本机 `web/tests/browser-flow.test.mjs` 已通过。
 - 当前仍缺少真机/人工 QA 记录和规则争议确认。
 
 **建议后续执行**
