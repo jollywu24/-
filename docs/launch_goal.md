@@ -57,6 +57,7 @@ Steam 愿望单目标为首轮验证目标：
 - `2026-06-22` 推送最新 `main` 后，GitHub Actions `Deploy Web MVP to GitHub Pages` 对 `9151a0c` 部署成功；复查线上 `/web/` 与上述关键资源均为 `200 OK`，线上 `web/app.js` 已注入 `const buildSha = window.__BUILD_SHA__ || '9151a0c';`。
 - 已接入 GitHub Issue Form 作为公开试玩反馈入口，`web/feedback.html` 提供独立说明页，不改动主游戏界面；反馈字段覆盖试玩入口或版本信息、玩法理解、红眼使用、重开欲望、愿望单意愿和 bug 复现信息。
 - `2026-06-22` 推送 `dd50697` 后复查线上反馈说明页 `/web/feedback.html`，返回 `200 OK`；Issue Form 链接对未登录 GitHub 用户会正常跳转登录页。
+- `2026-06-23` 复查 `9074664`：GitHub Actions `Web MVP Tests` 与 `Deploy Web MVP to GitHub Pages` 均成功；线上 `/web/`、`/web/feedback.html`、`/art/shop.png`、`/public/assets/ui/cards/deck_back.png`、`/public/assets/ui/panel/game_table_bg.png` 均返回 `200 OK`；线上 `web/app.js` 构建 SHA 为 `9074664`。
 
 待补证据：
 

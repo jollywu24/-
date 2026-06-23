@@ -23,6 +23,7 @@
 - 增加公开试玩反馈入口：GitHub Issue Form 收集版本信息、玩法理解、红眼使用、重开欲望和愿望单意愿；新增 `web/feedback.html` 作为独立反馈说明页，不改动主游戏界面。
 - 推送 `dd50697` 后复查线上 `/web/feedback.html` 返回 `200 OK`，确认公开反馈说明页已经进入 GitHub Pages。
 - 新增 `Web MVP Tests` GitHub Actions 工作流，使用 Node `22` 在主干、PR 和手动触发时运行语法检查、Node 测试、浏览器流程测试和空白检查；部署资源测试同步保护该测试工作流。
+- 复查 `9074664` 的 `Web MVP Tests` 和 Pages 部署均成功，线上 `/web/`、反馈页、关键图片资源和 build SHA 均通过冒烟检查。
 
 ## 2026-06-06
 
