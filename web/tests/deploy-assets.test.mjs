@@ -24,6 +24,13 @@ test('Pages 发布产物包含 Web 入口与运行时资源目录', () => {
   assert.match(workflow, /cp -R art dist-pages\/art/);
   assert.match(workflow, /cp -R public dist-pages\/public/);
   assert.match(workflow, /path:\s+\.\/dist-pages/);
+  assert.match(workflow, /Smoke check deployed Pages/);
+  assert.match(workflow, /PAGE_URL/);
+  assert.match(workflow, /curl --fail --silent --show-error --location --head/);
+  assert.match(workflow, /\/web\/feedback\.html/);
+  assert.match(workflow, /\/public\/assets\/ui\/cards\/deck_back\.png/);
+  assert.match(workflow, /\/public\/assets\/ui\/panel\/game_table_bg\.png/);
+  assert.match(workflow, /window\.__BUILD_SHA__ \|\| '\$short_sha'/);
 });
 
 test('运行时代码暴露可定位的构建 SHA 调试信息', () => {

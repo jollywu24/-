@@ -46,3 +46,38 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Smoke check deployed Pages
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="${PAGE_URL%/}"
+          short_sha="${GITHUB_SHA::7}"
+
+          check_head() {
+            local url="$1"
+            for attempt in {1..10}; do
+              if curl --fail --silent --show-error --location --head "$url" >/dev/null; then
+                echo "OK $url"
+                return 0
+              fi
+              sleep 3
+            done
+            curl --fail --silent --show-error --location --head "$url" >/dev/null
+          }
+
+          for path in \
+            /web/ \
+            /web/feedback.html \
+            /art/shop.png \
+            /public/assets/ui/cards/deck_back.png \
+            /public/assets/ui/panel/game_table_bg.png \
+            /web/app.js
+          do
+            check_head "$base$path"
+          done
+
+          curl --fail --silent --show-error --location "$base/web/app.js" \
+            | grep -F "window.__BUILD_SHA__ || '$short_sha'"

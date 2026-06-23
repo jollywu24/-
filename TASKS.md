@@ -35,6 +35,7 @@
 - 已新增 `Web MVP Tests` GitHub Actions 工作流，在主干、PR 和手动触发时运行语法检查、Node 测试、浏览器流程测试和空白检查。
 - 已复查 `2009dc8` 的 `Web MVP Tests` 与 Pages 部署均成功，线上入口、反馈页、关键资源和 build SHA 均通过 HTTP 冒烟。
 - 已修复 Windows headless 浏览器 profile 清理偶发 `EBUSY` 导致测试误失败的问题，本机 `web/tests/browser-flow.test.mjs` 已通过。
+- 已在 Pages 部署工作流中接入部署后线上 URL 冒烟检查，覆盖试玩入口、反馈页、关键资源、`web/app.js` 和 build SHA。
 - 当前仍缺少真机/人工 QA 记录和规则争议确认。
 
 **建议后续执行**
@@ -91,12 +92,11 @@
 **现状**
 
 - Pages artifact 已包含 `web/`、`art/` 和 `public/`，并有本地测试保护。
-- 已有人工 `curl` 线上冒烟记录；当前仍缺少自动访问线上 URL 并检查主要图片资源 HTTP 状态的步骤。
+- 已在 `.github/workflows/deploy-pages.yml` 中接入自动线上 URL 冒烟，检查 `/web/`、反馈页、关键图片、`/web/app.js` 和构建 SHA。
 
 **建议后续重构**
 
-- 增加部署后 smoke check，检查 `/web/`、`/art/shop.png`、`/public/assets/ui/cards/deck_back.png` 等关键路径。
-- 将检查结果写入发布记录或 CI 摘要。
+- 后续可把冒烟检查结果进一步写入 CI 摘要，方便非技术成员查看。
 
 ### 拆分 `web/app.js` 的职责
 

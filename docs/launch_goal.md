@@ -53,6 +53,7 @@ Steam 愿望单目标为首轮验证目标：
 - `web/tests/browser-flow.test.mjs` 覆盖固定 seed 的初始化、换牌、摊牌、红眼下注、通关结算、商店、爆牌和庄家通吃。
 - `web/tests/browser-flow.test.mjs` 覆盖桌面 `1600 x 900` 和手机横屏 `932 x 430` 的固定画布布局，检查页面无滚动、手牌不压到右侧操作区、右侧操作区不越出棋盘。
 - `.github/workflows/test-web.yml` 已接入公开试玩自动化基线，使用 Node `22`，在推送 `main`、Pull Request 和手动触发时运行语法检查、规则/架构/部署资源测试、浏览器流程测试和空白检查。
+- `.github/workflows/deploy-pages.yml` 在 Pages 部署完成后自动执行线上冒烟检查，验证 `/web/`、反馈页、关键图片资源、`/web/app.js` 和构建 SHA 注入。
 - `2026-06-22` 已对当前线上 Pages 入口执行 HTTP 冒烟检查：`/web/`、`/art/shop.png`、`/public/assets/ui/cards/deck_back.png`、`/public/assets/ui/panel/game_table_bg.png` 均返回 `200 OK`。
 - 已接入 GitHub Issue Form 作为公开试玩反馈入口，`web/feedback.html` 提供独立说明页，不改动主游戏界面；反馈字段覆盖试玩入口或版本信息、玩法理解、红眼使用、重开欲望、愿望单意愿和 bug 复现信息。
 - `2026-06-23` 本机重跑 `web/tests/browser-flow.test.mjs` 通过，覆盖桌面与手机横屏布局、初始化、换牌、摊牌、红眼下注、通关结算、商店、爆牌和庄家通吃；测试已对 Windows headless 浏览器 profile 临时文件锁增加清理重试。
@@ -125,7 +126,7 @@ Steam 愿望单目标为首轮验证目标：
    - `node --test web/tests/deploy-assets.test.mjs`
    - `node --test web/tests/browser-flow.test.mjs`
    - `git diff --check`
-   - `.github/workflows/test-web.yml` 在 GitHub Actions 中运行同一套基线；若当前环境无法启动无头浏览器，需要保留手动 QA 清单作为替代证据。
+   - `.github/workflows/test-web.yml` 在 GitHub Actions 中运行同一套基线；`.github/workflows/deploy-pages.yml` 部署后自动执行线上 URL 冒烟；若当前环境无法启动无头浏览器，需要保留手动 QA 清单作为替代证据。
 
 4. **规则文档一致**
    - 当前规则只看 `docs/component_rules.md` 和领域 README。
@@ -380,7 +381,7 @@ https://jollywu24.github.io/-/web/feedback.html
 
 | 优先级 | 任务 | 完成标准 |
 | --- | --- | --- |
-| P0 | 修复 GitHub Pages 资源发布 | artifact 包含 `web/`、`art/`、`public/`，并由 `web/tests/deploy-assets.test.mjs` 保护 |
+| P0 | 修复 GitHub Pages 资源发布 | artifact 包含 `web/`、`art/`、`public/`，部署后自动冒烟，并由 `web/tests/deploy-assets.test.mjs` 保护 |
 | P0 | 建立上线 QA 清单 | 本文件 P0 冒烟项能逐条验收 |
 | P0 | 确认浏览器流程测试环境 | `web/tests/browser-flow.test.mjs` 能自动定位 Chrome/Edge 并跑通，或记录当前环境限制与手动替代 |
 | P1 | 产出 Steam 文案草案 | 一句话、短描述、长描述和标签建议齐全 |
@@ -423,7 +424,7 @@ https://jollywu24.github.io/-/web/feedback.html
 
 - 通关后商店可进入，购买/刷新/跳过不会卡住流程。
 - 版本或构建 SHA 可在调试信息中定位。
-- GitHub Pages 线上入口 `/web/` 能加载 `art/` 和 `public/` 下的资源。
+- GitHub Pages 线上入口 `/web/` 能加载 `art/` 和 `public/` 下的资源；部署工作流会自动检查关键 URL。
 
 ## 验收口径
 

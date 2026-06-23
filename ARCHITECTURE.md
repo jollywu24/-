@@ -262,6 +262,8 @@ GitHub Actions 中的 `.github/workflows/test-web.yml` 使用 Node `22`，会在
 
 工作流会先定位系统里的 Chrome 或 Chromium 并写入 `CHROME_BIN`，避免浏览器流程测试在 CI 中依赖不稳定的命令名。
 
+Pages 发布由 `.github/workflows/deploy-pages.yml` 负责。该工作流会把 `web/`、`art/` 和 `public/` 一起打入 Pages artifact，部署完成后用 `curl` 对线上 `/web/`、`/web/feedback.html`、关键图片资源和 `/web/app.js` 执行冒烟检查，并确认 `web/app.js` 中的构建 SHA 已被注入。
+
 ## Python CLI 原型
 
 `src/jokermvp/` 是独立早期原型：

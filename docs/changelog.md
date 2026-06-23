@@ -27,6 +27,7 @@
 - README 补充线上试玩入口、反馈说明页和 GitHub Issue Form，方便直接发给公开测试玩家；部署资源测试同步保护这些入口链接。
 - 修复 Windows headless 浏览器 profile 清理偶发 `EBUSY` 导致 `web/tests/browser-flow.test.mjs` 误失败的问题；本机重跑浏览器流程测试通过，并将当前 Gate A 证据同步到上线目标文档。
 - 复查 `2009dc8` 的 `Web MVP Tests` 和 Pages 部署均成功，线上试玩入口、反馈页、关键图片资源、`web/app.js` 和 build SHA 均通过 HTTP 冒烟检查。
+- Pages 部署工作流新增部署后线上 URL 冒烟检查，自动验证试玩入口、反馈页、关键图片资源、`web/app.js` 和构建 SHA；部署资源测试同步保护该步骤。
 
 ## 2026-06-06
 
