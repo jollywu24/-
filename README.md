@@ -8,7 +8,25 @@
 
 ## 网页原型
 
-可玩入口：
+线上试玩入口：
+
+```text
+https://jollywu24.github.io/-/web/
+```
+
+试玩反馈说明：
+
+```text
+https://jollywu24.github.io/-/web/feedback.html
+```
+
+公开试玩反馈表：
+
+```text
+https://github.com/jollywu24/-/issues/new?template=playtest_feedback.yml
+```
+
+本地文件入口：
 
 ```text
 web/index.html
@@ -30,18 +48,6 @@ http://localhost:8000/web/
 
 ```text
 http://localhost:8000/web/?seed=balance-42
-```
-
-公开试玩反馈：
-
-```text
-https://github.com/jollywu24/-/issues/new?template=playtest_feedback.yml
-```
-
-反馈说明页：
-
-```text
-http://localhost:8000/web/feedback.html
 ```
 
 ## 当前核心内容

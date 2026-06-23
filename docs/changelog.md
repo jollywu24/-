@@ -24,6 +24,7 @@
 - 推送 `dd50697` 后复查线上 `/web/feedback.html` 返回 `200 OK`，确认公开反馈说明页已经进入 GitHub Pages。
 - 新增 `Web MVP Tests` GitHub Actions 工作流，使用 Node `22` 在主干、PR 和手动触发时运行语法检查、Node 测试、浏览器流程测试和空白检查；部署资源测试同步保护该测试工作流。
 - 复查 `9074664` 的 `Web MVP Tests` 和 Pages 部署均成功，线上 `/web/`、反馈页、关键图片资源和 build SHA 均通过冒烟检查。
+- README 补充线上试玩入口、反馈说明页和 GitHub Issue Form，方便直接发给公开测试玩家；部署资源测试同步保护这些入口链接。
 
 ## 2026-06-06
 
