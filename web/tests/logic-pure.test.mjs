@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import pkg from '../logic-pure.js';
 
-const { TILT_RULES, RED_EYE_GHOSTS, evaluateIgnitionSequence, effectiveScoringCards, sequenceAtLevel, applySimpleJokers, applyRedHeatCore, createRunState, createRng, createStandardDeck, simulatePreview, cardHypeValue, updateRedEyeState, tiltReliefForRound } = pkg;
+const { TILT_RULES, RED_EYE_GHOSTS, evaluateIgnitionSequence, effectiveScoringCards, sequenceAtLevel, applySimpleJokers, applyRedHeatCore, createRunState, createRng, createStandardDeck, simulatePreview, cardHypeValue, updateRedEyeState, redEyeMultiplierForPressure, tiltReliefForRound } = pkg;
 
 function card(rank, phase = 'kinetic') {
   return { chips: rank, phase };
@@ -356,6 +356,17 @@ test('red eye multiplies the current hand by 1.5 once', () => {
   assert.equal(run.multiplier, TILT_RULES.redEyeMultiplier);
   applyRedHeatCore(run);
   assert.equal(run.multiplier, TILT_RULES.redEyeMultiplier);
+});
+
+test('ghost pressure upgrades red eye multiplier between 140 and bust', () => {
+  assert.equal(redEyeMultiplierForPressure(139), TILT_RULES.redEyeMultiplier);
+  assert.equal(redEyeMultiplierForPressure(140), TILT_RULES.ghostPressureMultiplier);
+  assert.equal(redEyeMultiplierForPressure(159), TILT_RULES.ghostPressureMultiplier);
+  assert.equal(redEyeMultiplierForPressure(160), TILT_RULES.redEyeMultiplier);
+
+  const run = createRunState({ pressure: 140, baseDebt: 0, redEyeActive: true, redHeatStacks: 0 }, 100);
+  applyRedHeatCore(run);
+  assert.equal(run.multiplier, TILT_RULES.ghostPressureMultiplier);
 });
 
 test('crossing 100 applies the red eye multiplier to that hand', () => {

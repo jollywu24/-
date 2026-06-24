@@ -5,7 +5,9 @@
     max: 160,
     redEyeEnter: 100,
     redEyeExit: 80,
+    ghostPressureEnter: 140,
     redEyeMultiplier: 1.5,
+    ghostPressureMultiplier: 2,
     clearRelief: {
       normal: 25,
       elite: 35,
@@ -268,6 +270,12 @@
     return pressure >= TILT_RULES.redEyeEnter;
   }
 
+  function redEyeMultiplierForPressure(pressure) {
+    return pressure >= TILT_RULES.ghostPressureEnter && pressure < TILT_RULES.max
+      ? TILT_RULES.ghostPressureMultiplier
+      : TILT_RULES.redEyeMultiplier;
+  }
+
   function roundTypeForIndex(roundIndex = 0) {
     return ["normal", "elite", "boss"][Math.max(0, Math.floor(roundIndex)) % 3];
   }
@@ -368,7 +376,8 @@
     if (inRedline && !run.redEyeMultiplierApplied) {
       const bloodshotPerStack = GHOST_RULES[RED_EYE_GHOSTS.bloodshotGlasses]?.redEyeMultiplierPerStack || 0.1;
       const bloodshotBonus = owned.includes(RED_EYE_GHOSTS.bloodshotGlasses) ? run.bloodshotStacks * bloodshotPerStack : 0;
-      const redEyeMultiplier = TILT_RULES.redEyeMultiplier + bloodshotBonus;
+      const redEyeBaseMultiplier = redEyeMultiplierForPressure(run.pressure);
+      const redEyeMultiplier = redEyeBaseMultiplier + bloodshotBonus;
       const multBefore = run.multiplier;
       run.multiplier *= redEyeMultiplier;
       recordMultiplierEvent(run, {
@@ -381,7 +390,8 @@
         multAfter: run.multiplier
       });
       run.redEyeMultiplierApplied = true;
-      messages.push(`红眼：本手倍率 x${(TILT_RULES.redEyeMultiplier + bloodshotBonus).toFixed(1)}`);
+      const redEyeLabel = redEyeBaseMultiplier === TILT_RULES.ghostPressureMultiplier ? "鬼压桌" : "红眼";
+      messages.push(`${redEyeLabel}：本手倍率 x${redEyeMultiplier.toFixed(1)}`);
     }
 
     if (owned.includes("furnace_critical") && run.pressure >= TILT_RULES.redEyeEnter && !run.redlinePowerDoubled) {
@@ -651,6 +661,7 @@
     createStandardDeck,
     applySimpleJokers,
     updateRedEyeState,
+    redEyeMultiplierForPressure,
     roundTypeForIndex,
     tiltReliefForRound,
     applyRedHeatCore,

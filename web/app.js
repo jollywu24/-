@@ -3,6 +3,7 @@
   const boardHeight = 900;
   const tiltRules = window.GameLogic.TILT_RULES;
   const maxTilt = tiltRules.max;
+  const ghostPressureEnter = tiltRules.ghostPressureEnter || 140;
   const targetScores = [300, 700, 1500, 3200, 7000];
   const showdownsMax = 3;
   const maxDiscards = 2;
@@ -59,7 +60,7 @@
     showdownCount, discardCount, handCount, handZone, selectedCardTip, handName, chipsChip,
     multChip, chipsValue, multValue, stakeValue, tiltSection, tiltValue, meterHand, stressEyeArt, deckCount,
     deckStack, deckCards, jokerZone, jokerRow, jokerCount, ownedGhostTip, redEyeModal, redEyeModalClose,
-    redEyeOptionsPanel, redEyeEntry, redEyePanelArt, redEyeStateText, redEyeEntryDetail, redEyeIcon, redEyeTooltip,
+    redEyeOptionsPanel, redEyeEntry, redEyePanelArt, redEyeEntryTitle, redEyeStateText, redEyeEntryDetail, redEyeIcon, redEyeTooltip,
     failureOverlay, failureCard, failureTitle, failureSubtitle, failureStats, failureRestart,
     roundClearOverlay, roundClearCurrent, roundClearRewards, roundClearTotal, roundClearContinue,
     shopStage, shopGhostOffers, shopPackOffers, shopNextButton, shopRerollButton, shopMessage,
@@ -116,9 +117,8 @@
   }
 
   function stressEyeState(tilt = state.currentTilt) {
-    if (tilt >= 140) return "overload";
+    if (tilt >= ghostPressureEnter) return "overload";
     if (tilt >= tiltRules.redEyeEnter) return "redEye";
-    if (tilt >= 40) return "hot";
     return "cold";
   }
 
@@ -139,7 +139,7 @@
   }
 
   function baseRedEyeArtState() {
-    if (state.currentTilt >= 140 || state.failureType === "bustCard") return "burst";
+    if (state.currentTilt >= ghostPressureEnter || state.failureType === "bustCard") return "burst";
     if (state.activeRedEyeBet || state.redEyeUnlocked || state.redEyeActive) return "active";
     return "inactive";
   }
@@ -189,11 +189,11 @@
   }
 
   function currentGhostEffect(ghost) {
-    return content.ghostEffect(ghost, state, tiltRules.redEyeMultiplier);
+    return content.ghostEffect(ghost, state, redEyePhaseMultiplier());
   }
 
   function ghostTipEffect(ghost) {
-    return content.ghostDescription(ghost, state, tiltRules.redEyeMultiplier);
+    return content.ghostDescription(ghost, state, redEyePhaseMultiplier());
   }
 
   function ghostTermExplanations(ghost) {
@@ -206,11 +206,17 @@
       .join("");
   }
 
+  function ghostPortraitMarkup(ghost) {
+    const src = assets?.joker?.portraits?.[ghost.portraitAsset] || assets?.joker?.portraitFallback || "";
+    const image = src ? `<img src="${src}" alt="" loading="lazy" decoding="async">` : "";
+    return `<div class="portrait ${ghost.portrait}" aria-hidden="true">${image}</div>`;
+  }
+
   function ghostCardMarkup(ghost, extraClass = "") {
     const effect = currentGhostEffect(ghost);
     return `
       <article class="joker-card ${ghost.rarity} ${extraClass}" data-ghost="${ghost.id}">
-        <div class="portrait ${ghost.portrait}" aria-hidden="true"></div>
+        ${ghostPortraitMarkup(ghost)}
         <h2>${ghost.name}</h2>
         <p>${effect}</p>
         <div class="stars">${ghost.stars}</div>
@@ -868,13 +874,23 @@
     });
   }
 
+  function inGhostPressureStage(tilt = state.currentTilt) {
+    return tilt >= ghostPressureEnter && tilt < maxTilt;
+  }
+
+  function redEyePhaseMultiplier(tilt = state.currentTilt) {
+    return logic.redEyeMultiplierForPressure
+      ? logic.redEyeMultiplierForPressure(tilt)
+      : (inGhostPressureStage(tilt) ? 2 : tiltRules.redEyeMultiplier);
+  }
+
   function redEyeBaseMultiplier() {
     const perStack = ghostRules(content.RED_EYE_GHOST_IDS.bloodshotGlasses).redEyeMultiplierPerStack || 0;
-    return tiltRules.redEyeMultiplier + (ownsGhost(content.RED_EYE_GHOST_IDS.bloodshotGlasses) ? state.bloodshotStacks * perStack : 0);
+    return redEyePhaseMultiplier() + (ownsGhost(content.RED_EYE_GHOST_IDS.bloodshotGlasses) ? state.bloodshotStacks * perStack : 0);
   }
 
   function updateGlobalHeatState() {
-    const heatState = state.currentTilt >= 140
+    const heatState = inGhostPressureStage()
       ? "critical"
       : state.redEyeActive
         ? "red-eye"
@@ -884,23 +900,22 @@
     ["normal", "preheat", "red-eye", "critical"].forEach((className) => {
       board.classList.toggle(className, className === heatState);
     });
-    board.classList.toggle("near-red-eye", state.currentTilt >= 95 && state.currentTilt < 140);
+    board.classList.toggle("near-red-eye", state.currentTilt >= 95 && state.currentTilt < ghostPressureEnter);
+    tiltSection.classList.toggle("ghost-pressure", inGhostPressureStage());
+    redEyeEntry.classList.toggle("ghost-pressure-entry", inGhostPressureStage());
   }
 
   function updateRedEyeEntryCopy() {
+    const ghostPressure = inGhostPressureStage();
+    if (redEyeEntryTitle) redEyeEntryTitle.textContent = ghostPressure ? "鬼压赌注" : "红眼赌注";
     if (state.redEyeBetsBlockedThisRound) {
       redEyeStateText.textContent = "本关封锁";
       redEyeEntryDetail.textContent = "烂命保险已触发";
       return;
     }
-    if (state.currentTilt >= 140) {
-      redEyeStateText.textContent = "危险";
-      redEyeEntryDetail.textContent = "再赌可能爆牌";
-      return;
-    }
     if (state.activeRedEyeBet) {
       redEyeStateText.textContent = state.activeRedEyeBet.name;
-      redEyeEntryDetail.textContent = "正在使用红眼赌注";
+      redEyeEntryDetail.textContent = ghostPressure ? "鬼压赌注已绑定" : "红眼赌注已绑定";
       return;
     }
     if (state.redEyeUsedThisRound) {
@@ -908,23 +923,30 @@
       redEyeEntryDetail.textContent = "本关已下注";
       return;
     }
-    if (state.redEyeActive) {
-      redEyeStateText.textContent = `红倍率 ×${redEyeBaseMultiplier().toFixed(1)}`;
-      redEyeEntryDetail.textContent = "翻 1 张暗涌";
+    if (state.redEyeUnlocked) {
+      redEyeStateText.textContent = ghostPressure ? "鬼压赌注" : "红眼赌注";
+      redEyeEntryDetail.textContent = ghostPressure
+        ? `红倍率 ×${redEyeBaseMultiplier().toFixed(1)}｜点击选择`
+        : "点击选择下一手加注";
       return;
     }
-    redEyeStateText.textContent = "未开启";
+    if (state.redEyeActive) {
+      redEyeStateText.textContent = ghostPressure ? "鬼压赌注" : "红眼赌注";
+      redEyeEntryDetail.textContent = `红倍率 ×${redEyeBaseMultiplier().toFixed(1)}｜翻 1 张暗涌`;
+      return;
+    }
+    redEyeStateText.textContent = "普通";
     redEyeEntryDetail.textContent = `还差 ${Math.max(0, tiltRules.redEyeEnter - Math.round(state.currentTilt))} 上头`;
   }
 
   function showRedEyeAnnouncement(title, subtitle, className = "") {
     redEyeAnnouncement.querySelector("strong").textContent = title;
     redEyeAnnouncement.querySelector("span").textContent = subtitle;
-    redEyeAnnouncement.classList.remove("show", "bust-message");
+    redEyeAnnouncement.classList.remove("show", "bust-message", "ghost-pressure-message");
     if (className) redEyeAnnouncement.classList.add(className);
     void redEyeAnnouncement.offsetWidth;
     redEyeAnnouncement.classList.add("show");
-    window.setTimeout(() => redEyeAnnouncement.classList.remove("show", "bust-message"), 900);
+    window.setTimeout(() => redEyeAnnouncement.classList.remove("show", "bust-message", "ghost-pressure-message"), 900);
   }
 
   function playRedEyeEntryAnimation() {
@@ -934,6 +956,15 @@
     playArtVfx(redEyeArtVfx, "play-red-eye");
     pulseElement(deckStack, "surge-shake");
     showRedEyeAnnouncement("红眼", "红眼赌注已解锁");
+  }
+
+  function playGhostPressureEntryAnimation() {
+    pulseElement(board, "critical-hit");
+    pulseElement(tiltSection, "ghost-pressure-breakthrough");
+    globalRedFlash.classList.remove("bust-flash");
+    pulseElement(globalRedFlash, "show");
+    pulseElement(deckStack, "surge-shake");
+    showRedEyeAnnouncement("鬼压桌", "鬼压赌注升级", "ghost-pressure-message");
   }
 
   function playRedEyeExitAnimation() {
@@ -1189,6 +1220,7 @@
     updateStressEyeArt(previousTilt);
     updateRedEyePanelArt();
     if (!wasRedEyeActive && state.redEyeActive) playRedEyeEntryAnimation();
+    if (previousTilt < ghostPressureEnter && inGhostPressureStage()) playGhostPressureEntryAnimation();
     if (wasRedEyeActive && !state.redEyeActive) playRedEyeExitAnimation();
   }
 
@@ -1257,11 +1289,14 @@
         ? ghostRules(content.RED_EYE_GHOST_IDS.redEyeIou).surgeHype
         : 0;
       const range = preview ? ` 暗涌风险：上头 +${preview.min + iouHype}~+${preview.max + iouHype}。` : "";
-      return `${state.activeRedEyeBet.name}（下一手生效）：${state.activeRedEyeBet.text}${range}`;
+      const wagerName = inGhostPressureStage() ? "鬼压赌注" : "红眼赌注";
+      return `${state.activeRedEyeBet.name}（${wagerName}，下一手生效）：${state.activeRedEyeBet.text}${range}`;
     }
     if (state.redEyeBetsBlockedThisRound) return "烂命保险已触发，本关禁止继续使用红眼赌注。";
     if (state.redEyeUsedThisRound) return "本轮红眼赌注已使用。下一轮重新锁定。";
-    if (state.redEyeUnlocked) return "红眼赌注已解锁。点击入口选择下一手加注。";
+    if (state.redEyeUnlocked) return inGhostPressureStage()
+      ? "鬼压赌注已解锁。点击入口选择下一手高危加注。"
+      : "红眼赌注已解锁。点击入口选择下一手加注。";
     return "尚未解锁红眼赌注。";
   }
 
@@ -1453,7 +1488,7 @@
     });
   }
 
-  function calculateRoundReward({ flipBonus = 0 } = {}) {
+  function calculateRoundReward({ flipBonus = 0, ghostPressureBonus = 0 } = {}) {
     return roundRules.calculateRoundReward({
       clearReward: CLEAR_REWARD,
       playReward: PLAY_REWARD,
@@ -1461,6 +1496,8 @@
       showdownsLeft: state.showdownsLeft,
       discardsLeft: state.discardsLeft,
       flipBonus,
+      ghostPressureBonus,
+      currentTilt: state.currentTilt,
       formattedStake: formatNumber(state.currentStake)
     });
   }
@@ -1895,8 +1932,15 @@
 
     if (clearsTarget) {
       applyRedEyeRoundCostOnClear({ stealLineClears, lifeDebtSaved: lifeDebtWouldBurst });
+      const ghostPressureBonus = roundRules.calculateGhostPressureClearBonus({
+        clearsTarget,
+        currentTilt: state.currentTilt,
+        maxTilt,
+        threshold: ghostPressureEnter
+      });
       const reward = calculateRoundReward({
-        flipBonus: calculateFlipDealerBonus(clearsTarget)
+        flipBonus: calculateFlipDealerBonus(clearsTarget),
+        ghostPressureBonus
       });
       consumeActiveRedEyeBetAfterShowdown();
       await wait(240);

@@ -644,7 +644,7 @@ button {
 
 .joker-card {
   height: 247px;
-  padding: 13px 12px 10px;
+  padding: 0;
   border: 1px solid rgba(176, 113, 47, 0.86);
   border-radius: 4px;
   background:
@@ -684,46 +684,64 @@ button {
 
 .portrait {
   position: absolute;
-  left: 18px;
-  top: 38px;
-  width: 126px;
-  height: 126px;
-  border-radius: 10px;
-  opacity: 0.86;
-  background-image:
-    radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(2, 1, 1, 0.78) 74%, #030201 100%),
-    var(--shop-art);
-  background-repeat: no-repeat;
-  background-size: auto, 1672px 941px;
-  filter: saturate(0.88) brightness(0.72) contrast(1.16);
+  left: 10px;
+  top: 10px;
+  right: 10px;
+  bottom: 10px;
+  width: auto;
+  height: auto;
+  border-radius: 6px;
+  opacity: 1;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(176, 74, 34, 0.18), transparent 42%),
+    linear-gradient(180deg, rgba(34, 18, 13, 0.96), rgba(3, 2, 2, 0.98));
+  filter: saturate(1.02) brightness(1) contrast(1.03);
   box-shadow:
     inset 0 0 28px rgba(0, 0, 0, 0.88),
     0 0 22px rgba(116, 22, 14, 0.28);
+  overflow: hidden;
 }
 
-.portrait::before,
+.portrait img {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 18%;
+}
+
+.portrait::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 45%, transparent 0 62%, rgba(1, 1, 1, 0.28) 86%, rgba(1, 1, 1, 0.58) 100%),
+    linear-gradient(180deg, rgba(255, 194, 93, 0.06), transparent 24%, rgba(0, 0, 0, 0.08) 100%);
+  box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.46);
+}
+
 .portrait::after {
   display: none;
 }
 
-.portrait.dealer {
-  background-position: center, -454px -114px;
+.portrait.red-eye-iou img {
+  object-position: center 12%;
 }
 
-.portrait.debtor {
-  background-position: center, -640px -114px;
+.portrait.small-card-courage img {
+  object-position: center 10%;
 }
 
-.portrait.lady {
-  background-position: center, -820px -114px;
+.portrait.rotten-life-insurance img {
+  object-position: center 13%;
 }
 
-.portrait.collector {
-  background-position: center, -1010px -114px;
-}
-
-.portrait.reaper {
-  background-position: center, -1204px -114px;
+.portrait.withdrawal-rebound img {
+  object-position: center 15%;
 }
 
 .joker-card p {
@@ -749,12 +767,14 @@ button {
 }
 
 .owned-ghost-card .portrait {
-  left: 50%;
-  top: 46px;
-  width: 126px;
-  height: 126px;
-  transform: translateX(-50%);
-  opacity: 0.94;
+  left: 8px;
+  top: 8px;
+  right: 8px;
+  bottom: 8px;
+  width: auto;
+  height: auto;
+  transform: none;
+  opacity: 1;
 }
 
 .owned-ghost-card:hover {
@@ -1938,7 +1958,6 @@ button {
 .shop-ghost-card {
   width: 172px;
   height: 232px;
-  padding-top: 15px;
   filter: brightness(1.08) saturate(1.02);
   box-shadow:
     inset 0 0 0 2px rgba(0, 0, 0, 0.85),
@@ -1952,12 +1971,14 @@ button {
 }
 
 .shop-ghost-card .portrait {
-  left: 50%;
-  top: 46px;
-  width: 126px;
-  height: 126px;
-  transform: translateX(-50%);
-  opacity: 0.94;
+  left: 9px;
+  top: 9px;
+  right: 9px;
+  bottom: 9px;
+  width: auto;
+  height: auto;
+  transform: none;
+  opacity: 1;
 }
 
 .shop-ghost-card p,
@@ -3466,6 +3487,30 @@ button {
   animation: critical-entry-flash 420ms linear infinite;
 }
 
+.red-eye-entry.ghost-pressure-entry {
+  border-color: rgba(255, 88, 46, 0.96);
+  box-shadow:
+    inset 0 0 42px rgba(160, 18, 11, 0.48),
+    0 0 34px rgba(228, 48, 27, 0.48),
+    0 0 58px rgba(106, 7, 5, 0.34);
+  animation: critical-entry-flash 360ms linear infinite;
+}
+
+.tilt-meter.ghost-pressure .section-title strong {
+  color: #ffb38c;
+  text-shadow:
+    0 0 10px rgba(239, 60, 31, 0.72),
+    0 0 22px rgba(174, 20, 14, 0.54);
+}
+
+.tilt-meter.ghost-pressure .eye-meter {
+  animation: ghost-pressure-eye-jitter 180ms linear infinite;
+  box-shadow:
+    inset 0 0 0 12px rgba(0, 0, 0, 0.76),
+    inset 0 0 0 24px rgba(171, 35, 23, 0.24),
+    0 0 44px rgba(228, 53, 28, 0.54);
+}
+
 .red-eye-entry.wager-press {
   animation: wager-button-press 260ms ease-out 1 !important;
 }
@@ -3484,6 +3529,10 @@ button {
 
 .tilt-meter.red-eye-breakthrough .eye-meter {
   animation: red-eye-breakthrough 620ms cubic-bezier(0.15, 0.78, 0.18, 1) 1;
+}
+
+.tilt-meter.ghost-pressure-breakthrough .eye-meter {
+  animation: ghost-pressure-breakthrough 720ms cubic-bezier(0.12, 0.8, 0.15, 1) 1;
 }
 
 .game-board.cooling::after {
@@ -4138,6 +4187,21 @@ button {
   0% { transform: scale(1); filter: brightness(1); }
   28% { transform: scale(0.96); filter: brightness(0.7) saturate(1.4); }
   48% { transform: scale(1.12); filter: brightness(1.8) saturate(1.55); box-shadow: inset 0 0 0 12px rgba(0, 0, 0, 0.75), inset 0 0 0 24px rgba(168, 31, 22, 0.28), 0 0 62px rgba(242, 52, 28, 0.72); }
+  100% { transform: scale(1); }
+}
+
+@keyframes ghost-pressure-eye-jitter {
+  0%, 100% { transform: translate(0, 0) scale(1); filter: brightness(1.08) saturate(1.16); }
+  25% { transform: translate(-1px, 0) scale(1.006); filter: brightness(1.22) saturate(1.22); }
+  50% { transform: translate(1px, -1px) scale(0.998); filter: brightness(1.32) saturate(1.28); }
+  75% { transform: translate(0, 1px) scale(1.004); filter: brightness(1.18) saturate(1.2); }
+}
+
+@keyframes ghost-pressure-breakthrough {
+  0% { transform: scale(1); filter: brightness(1) saturate(1); }
+  20% { transform: scale(0.92) rotate(-1deg); filter: brightness(0.64) saturate(1.55); }
+  42% { transform: scale(1.16) rotate(1deg); filter: brightness(2) saturate(1.72); box-shadow: inset 0 0 0 12px rgba(0, 0, 0, 0.76), inset 0 0 0 24px rgba(191, 30, 18, 0.34), 0 0 78px rgba(246, 61, 32, 0.8); }
+  64% { transform: scale(0.99) rotate(-0.4deg); filter: brightness(1.32) saturate(1.34); }
   100% { transform: scale(1); }
 }
 

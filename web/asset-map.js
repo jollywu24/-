@@ -26,7 +26,14 @@
     },
     joker: {
       frame: path("joker", "joker_frame.png"),
-      portraitFallback: path("joker", "joker_portrait_fallback.png")
+      portraitFallback: path("joker", "joker_portrait_fallback.png"),
+      portraits: {
+        bloodshotGlasses: path("joker", "ghost_bloodshot_glasses.jpg"),
+        redEyeIou: path("joker", "ghost_red_eye_iou.jpg"),
+        smallCardCourage: path("joker", "ghost_small_card_courage.jpg"),
+        rottenLifeInsurance: path("joker", "ghost_rotten_life_insurance.jpg"),
+        withdrawalRebound: path("joker", "ghost_withdrawal_rebound.jpg")
+      }
     },
     fx: {
       redBeam: path("fx", "red_beam.png"),

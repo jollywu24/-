@@ -65,7 +65,8 @@
       ],
       stars: "★★★◇◇",
       rarity: "rare-purple",
-      portrait: "debtor",
+      portrait: "bloodshot-glasses",
+      portraitAsset: "bloodshotGlasses",
       rules: { normalHype: 3, stacksPerRedEyeEntry: 1, redEyeMultiplierPerStack: 0.1 },
       jokerId: RED_EYE_GHOST_IDS.bloodshotGlasses
     },
@@ -80,7 +81,8 @@
       ],
       stars: "★★★★◇",
       rarity: "rare-orange",
-      portrait: "collector",
+      portrait: "red-eye-iou",
+      portraitAsset: "redEyeIou",
       rules: { betMultiplier: 1.25, surgeHype: 3 },
       jokerId: RED_EYE_GHOST_IDS.redEyeIou
     },
@@ -96,7 +98,8 @@
       ],
       stars: "★★◇◇◇",
       rarity: "rare-orange",
-      portrait: "reaper",
+      portrait: "small-card-courage",
+      portraitAsset: "smallCardCourage",
       rules: { maxSurgeForMultiplier: 5 },
       jokerId: RED_EYE_GHOST_IDS.smallCardCourage
     },
@@ -111,7 +114,8 @@
       ],
       stars: "★★★★◇",
       rarity: "rare-blue",
-      portrait: "dealer",
+      portrait: "rotten-life-insurance",
+      portraitAsset: "rottenLifeInsurance",
       rules: { resetTilt: 120, destroyOnTrigger: true, blockBetsOnTrigger: true },
       jokerId: RED_EYE_GHOST_IDS.rottenLifeInsurance
     },
@@ -127,7 +131,8 @@
       ],
       stars: "★★★★◇",
       rarity: "rare-purple",
-      portrait: "debtor",
+      portrait: "withdrawal-rebound",
+      portraitAsset: "withdrawalRebound",
       rules: { stacksPerRedEyeExit: 1, multiplierPerStack: 1.3 },
       jokerId: RED_EYE_GHOST_IDS.withdrawalRebound
     }

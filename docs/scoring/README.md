@@ -29,12 +29,12 @@
 - `animateMultiplierSettlement`：按事件顺序展示倍率变化。
 - `calculateRoundReward`：通关收益。
 - `checkFailureAfterScoring`：按爆牌优先、庄家通吃次之判断失败。
-- `canStealLineClear` / `calculateFlipDealerBonus`：处理依赖回合结果的红眼赌注。
+- `canStealLineClear` / `calculateFlipDealerBonus` / `calculateGhostPressureClearBonus`：处理依赖回合结果的红眼赌注和鬼压桌奖励。
 
 `web/round-rules.js`：
 
 - `checkFailureAfterScoring`：爆牌和庄家通吃的纯判定。
-- `canStealLineClear` / `redEyeRoundCostOnClear` / `calculateFlipDealerBonus`：依赖回合结果的红眼赌注规则。
+- `canStealLineClear` / `redEyeRoundCostOnClear` / `calculateFlipDealerBonus` / `calculateGhostPressureClearBonus`：依赖回合结果的红眼赌注和鬼压桌奖励规则。
 - `calculateRoundReward`：纯收益计算。
 
 ## 当前数据契约
@@ -61,7 +61,7 @@
 7. 处理红眼状态变化、保险与爆牌。
 8. 生成最终分数和倍率事件。
 
-普通摊牌仍按有效牌点数和牌型上头汇总风险；红眼赌注生效时，上头风险改为只取暗涌牌点数，不再叠加牌型上头。
+普通摊牌仍按有效牌点数和牌型上头汇总风险；红眼赌注生效时，上头风险改为只取暗涌牌点数，不再叠加牌型上头。过关结算若停在 `140–159` 的鬼压桌区间，会额外加入 `(上头值 - 139) × 2` 的鬼压桌过关奖励。
 
 此顺序不包括分数提交、失败判断、通关收益和跨轮代价；这些步骤由 `web/app.js` 在 `showdown` 中完成。
 

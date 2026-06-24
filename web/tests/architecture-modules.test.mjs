@@ -100,9 +100,24 @@ test('纯回合规则保持爆牌优先和红眼赌注跨轮结果', () => {
     maxTilt: 160,
     currentStake: 30,
   }), 20);
+  assert.equal(roundRules.calculateGhostPressureClearBonus({
+    clearsTarget: true,
+    currentTilt: 140,
+    maxTilt: 160,
+  }), 2);
+  assert.equal(roundRules.calculateGhostPressureClearBonus({
+    clearsTarget: true,
+    currentTilt: 159,
+    maxTilt: 160,
+  }), 40);
+  assert.equal(roundRules.calculateGhostPressureClearBonus({
+    clearsTarget: false,
+    currentTilt: 150,
+    maxTilt: 160,
+  }), 0);
 });
 
-test('纯回合收益规则保持现有奖励数值', () => {
+test('纯回合收益规则包含基础、翻庄和鬼压桌奖励', () => {
   const reward = roundRules.calculateRoundReward({
     clearReward: 4,
     playReward: 1,
@@ -110,9 +125,12 @@ test('纯回合收益规则保持现有奖励数值', () => {
     showdownsLeft: 2,
     discardsLeft: 1,
     flipBonus: 12,
+    ghostPressureBonus: 22,
+    currentTilt: 150,
     formattedStake: '12',
   });
 
-  assert.equal(reward.total, 20);
-  assert.deepEqual(reward.lines.map((line) => line.amount), [4, 2, 2, 12]);
+  assert.equal(reward.total, 42);
+  assert.deepEqual(reward.lines.map((line) => line.amount), [4, 2, 2, 12, 22]);
+  assert.equal(reward.lines.at(-1).label, '鬼压桌过关奖励');
 });

@@ -34,6 +34,11 @@
     return Math.min(currentStake, maxReward);
   }
 
+  function calculateGhostPressureClearBonus({ clearsTarget, currentTilt, maxTilt, threshold = 140 }) {
+    if (!clearsTarget || currentTilt < threshold || currentTilt >= maxTilt) return 0;
+    return (Math.floor(currentTilt) - (threshold - 1)) * 2;
+  }
+
   function rewardLine(key, label, amount, detail = "") {
     return { key, label, amount: Math.max(0, Math.round(amount || 0)), detail };
   }
@@ -54,6 +59,14 @@
     if (input.flipBonus > 0) {
       lines.push(rewardLine("flipBonus", "翻庄奖励", input.flipBonus, `当前赌资 $${input.formattedStake}，最多额外 +$20`));
     }
+    if (input.ghostPressureBonus > 0) {
+      lines.push(rewardLine(
+        "ghostPressureBonus",
+        "鬼压桌过关奖励",
+        input.ghostPressureBonus,
+        `上头 ${Math.floor(input.currentTilt)}，压线奖励`
+      ));
+    }
     if (ghostBonus > 0) lines.push(rewardLine("ghostBonus", "赌鬼奖励", ghostBonus));
 
     return {
@@ -62,6 +75,7 @@
       remainingDiscardReward,
       redEyeReward,
       flipBonus: input.flipBonus,
+      ghostPressureBonus: input.ghostPressureBonus || 0,
       ghostBonus,
       total: lines.reduce((sum, line) => sum + line.amount, 0),
       lines
@@ -73,6 +87,7 @@
     canStealLineClear,
     redEyeRoundCostOnClear,
     calculateFlipDealerBonus,
+    calculateGhostPressureClearBonus,
     calculateRoundReward
   };
 

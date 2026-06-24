@@ -60,6 +60,11 @@ test('线上试玩关键资源路径存在于发布 artifact 对应目录', () =
     '../public/assets/ui/surge/surge_card_face_template.png',
     '../public/assets/ui/surge/surge_reveal_glow.png',
     '../public/assets/ui/surge/surge_unknown_back.png',
+    '../public/assets/ui/joker/ghost_bloodshot_glasses.jpg',
+    '../public/assets/ui/joker/ghost_red_eye_iou.jpg',
+    '../public/assets/ui/joker/ghost_small_card_courage.jpg',
+    '../public/assets/ui/joker/ghost_rotten_life_insurance.jpg',
+    '../public/assets/ui/joker/ghost_withdrawal_rebound.jpg',
   ];
 
   for (const ref of webRelativeAssetRefs) {
@@ -77,6 +82,11 @@ test('运行时代码仍通过 web 目录的相对路径引用发布资源', () 
   assert.match(index, /\.\.\/art\/vfx\/red-eye-awakening\.png/);
   assert.match(index, /\.\.\/art\/vfx\/red-eye-wager-seal\.png/);
   assert.match(assetMap, /\.\.\/public\/assets\/ui/);
+  assert.match(assetMap, /ghost_bloodshot_glasses\.jpg/);
+  assert.match(assetMap, /ghost_red_eye_iou\.jpg/);
+  assert.match(assetMap, /ghost_small_card_courage\.jpg/);
+  assert.match(assetMap, /ghost_rotten_life_insurance\.jpg/);
+  assert.match(assetMap, /ghost_withdrawal_rebound\.jpg/);
 });
 
 test('公开试玩反馈入口可以收集版本、理解成本和愿望单意愿', () => {

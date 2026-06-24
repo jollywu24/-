@@ -41,6 +41,7 @@
       redEyeOptionsPanel: document.querySelector(".red-eye-options"),
       redEyeEntry,
       redEyePanelArt: redEyeEntry.querySelector(".red-eye-panel-art"),
+      redEyeEntryTitle: redEyeEntry.querySelector("h2"),
       redEyeStateText: redEyeEntry.querySelector("strong"),
       redEyeEntryDetail: redEyeEntry.querySelector(".red-eye-entry-detail"),
       redEyeIcon: document.querySelector(".red-eye-status-icon"),
