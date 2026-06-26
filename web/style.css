@@ -1567,6 +1567,7 @@ button {
 }
 
 .card-back-flight .card-flight-back {
+  position: absolute;
   display: grid;
   place-items: center;
   border: 4px solid #2a2117;
@@ -1578,6 +1579,25 @@ button {
   color: #a77a47;
   transform: rotateY(0deg);
   box-shadow: inset 0 0 0 5px rgba(118, 86, 45, 0.24);
+}
+
+.card-flight-back-image {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.card-flight-back .skull {
+  position: relative;
+  z-index: 1;
+}
+
+.card-flight-back.asset-ready .skull {
+  opacity: 0;
 }
 
 .card-back-flight.is-face-up .card-flight-face {

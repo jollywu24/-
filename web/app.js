@@ -842,7 +842,14 @@
     face.innerHTML = clone.innerHTML;
     const back = document.createElement("div");
     back.className = "card-flight-back";
-    back.innerHTML = '<span class="skull">☠</span>';
+    safeImage?.mount(back, {
+      src: assets?.cards?.deckBack,
+      className: "card-flight-back-image"
+    });
+    const fallback = document.createElement("span");
+    fallback.className = "skull";
+    fallback.textContent = "☠";
+    back.appendChild(fallback);
     clone.replaceChildren(face, back);
     return clone;
   }
