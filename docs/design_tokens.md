@@ -114,3 +114,12 @@
 新增或替换运行时图片时，同步检查资源路径、发布范围和 `public/assets/manifest/ASSET_MANIFEST.md`。
 
 `art/steam/screenshots/` 用于保存 Steam 页面和宣传材料的真实 gameplay 截图，不属于运行时资源；更新该目录不需要登记到 `web/asset-map.js`，但需要在上线目标文档中说明用途和当前状态。
+
+## 商店阶段背景
+
+- 运行时资源：`art/shop.png`，固定为 `1600 x 900`。
+- 图片只绘制黑暗禁忌商店环境、空货架和材质氛围，不写入标题、价格、按钮、卡牌或商品人物。
+- 左侧信息栏、右侧操作区和中央商品位必须保留低对比留白，动态内容继续由 DOM 渲染。
+- `.game-board.shop-phase::before` 以 `z-index: 1` 位于主赌桌底图之上、所有商店交互 DOM 之下；不使用 `screen` 混合，避免暗金和黑色材质被洗灰。
+- `.shop-frame`、`.shop-actions` 和 `.shop-shelves` 只保留透明交互布局，不再绘制重复的旧货架、立柱与实色面板。
+- 商店背景只替代装饰层，不替代 `.shop-stage` 的交互边界，也不得改变固定 `1600 x 900` 布局。

@@ -372,6 +372,9 @@
       run.redlineWasActive = true;
     }
     run.redEyeActive = inRedline;
+    if (inRedline && owned.includes(RED_EYE_GHOSTS.rottenLifeInsurance) && !run.insuranceTriggered) {
+      run.abyssInsuranceAvailable = true;
+    }
 
     if (inRedline && !run.redEyeMultiplierApplied) {
       const bloodshotPerStack = GHOST_RULES[RED_EYE_GHOSTS.bloodshotGlasses]?.redEyeMultiplierPerStack || 0.1;

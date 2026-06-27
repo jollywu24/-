@@ -95,12 +95,13 @@ button {
 }
 
 .game-board.shop-phase::before {
-  opacity: 0.14;
+  z-index: 1;
+  opacity: 0.9;
   background:
-    radial-gradient(ellipse at 55% 60%, rgba(116, 58, 24, 0.3), transparent 42%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.28) 0 23%, transparent 31% 81%, rgba(0, 0, 0, 0.22) 89% 100%),
+    radial-gradient(ellipse at 54% 58%, rgba(116, 58, 24, 0.08), transparent 48%),
     var(--shop-art) center / cover no-repeat;
-  filter: saturate(0.56) brightness(0.34) contrast(1.08);
-  mix-blend-mode: screen;
+  filter: saturate(0.76) brightness(0.68) contrast(1.08);
 }
 
 .game-board::after {
@@ -1660,45 +1661,18 @@ button {
   position: absolute;
   inset: 0;
   padding: 20px 26px 22px;
-  border: 1px solid rgba(166, 119, 55, 0.78);
+  border: 1px solid rgba(166, 119, 55, 0.24);
   background:
-    linear-gradient(90deg, rgba(126, 39, 20, 0.12), transparent 9%, transparent 91%, rgba(126, 39, 20, 0.1)),
-    radial-gradient(circle at 12% 80%, rgba(142, 52, 22, 0.16), transparent 18%),
-    radial-gradient(circle at 93% 32%, rgba(174, 94, 34, 0.12), transparent 16%),
-    repeating-linear-gradient(90deg, rgba(218, 152, 72, 0.02) 0 1px, transparent 1px 9px),
-    linear-gradient(180deg, rgba(17, 12, 8, 0.98), rgba(6, 5, 4, 0.99));
+    linear-gradient(90deg, rgba(0, 0, 0, 0.34), transparent 20%, transparent 90%, rgba(0, 0, 0, 0.18)),
+    linear-gradient(180deg, rgba(7, 5, 3, 0.16), rgba(3, 2, 1, 0.24));
   box-shadow:
-    inset 0 0 0 2px rgba(0, 0, 0, 0.86),
-    inset 0 0 0 5px rgba(91, 54, 24, 0.16),
-    inset 0 0 68px rgba(92, 36, 14, 0.48),
-    0 28px 58px rgba(0, 0, 0, 0.72);
+    inset 0 0 0 1px rgba(0, 0, 0, 0.42),
+    0 24px 52px rgba(0, 0, 0, 0.28);
 }
 
 .shop-frame::before,
 .shop-frame::after {
-  content: "";
-  position: absolute;
-  top: 70px;
-  bottom: 18px;
-  width: 38px;
-  border: 1px solid rgba(176, 128, 62, 0.52);
-  background:
-    radial-gradient(circle at 50% 10%, rgba(224, 151, 58, 0.28), transparent 21%),
-    radial-gradient(circle at 50% 90%, rgba(224, 151, 58, 0.2), transparent 23%),
-    repeating-linear-gradient(0deg, transparent 0 25px, rgba(172, 116, 53, 0.16) 25px 27px, transparent 27px 52px),
-    linear-gradient(90deg, rgba(17, 10, 6, 0.99), rgba(67, 44, 20, 0.78), rgba(7, 5, 4, 0.99));
-  box-shadow:
-    inset 0 0 24px rgba(0, 0, 0, 0.86),
-    0 0 20px rgba(0, 0, 0, 0.62);
-  pointer-events: none;
-}
-
-.shop-frame::before {
-  left: 8px;
-}
-
-.shop-frame::after {
-  right: 8px;
+  display: none;
 }
 
 .shop-title {
@@ -1749,18 +1723,7 @@ button {
 }
 
 .shop-actions::before {
-  content: "";
-  position: absolute;
-  inset: 4px 0 0;
-  border: 1px solid rgba(132, 91, 43, 0.38);
-  background:
-    linear-gradient(90deg, rgba(79, 47, 22, 0.5), transparent 11%, transparent 89%, rgba(79, 47, 22, 0.5)),
-    linear-gradient(180deg, rgba(4, 3, 2, 0.18), rgba(2, 2, 1, 0.68));
-  box-shadow:
-    inset 18px 0 20px -18px rgba(189, 126, 55, 0.42),
-    inset -18px 0 20px -18px rgba(189, 126, 55, 0.42),
-    inset 0 0 34px rgba(0, 0, 0, 0.76);
-  pointer-events: none;
+  display: none;
 }
 
 .shop-next-button,
@@ -1870,39 +1833,11 @@ button {
 .shop-shelves::before,
 .shop-shelves::after,
 .shop-ghost-shelf::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 6px;
-  height: 20px;
-  border: 1px solid rgba(162, 116, 54, 0.54);
-  background:
-    radial-gradient(circle at 10% 50%, rgba(210, 145, 62, 0.18), transparent 10%),
-    radial-gradient(circle at 90% 50%, rgba(210, 145, 62, 0.18), transparent 10%),
-    repeating-linear-gradient(90deg, transparent 0 34px, rgba(199, 132, 54, 0.08) 35px 36px),
-    linear-gradient(180deg, rgba(101, 67, 29, 0.88), rgba(23, 14, 8, 0.98) 48%, rgba(6, 4, 3, 0.99));
-  box-shadow:
-    inset 0 2px 0 rgba(214, 154, 76, 0.12),
-    inset 0 -4px 8px rgba(0, 0, 0, 0.82),
-    0 9px 16px rgba(0, 0, 0, 0.68);
-  pointer-events: none;
-  z-index: 3;
-}
-
-.shop-shelves::before {
-  top: 4px;
-}
-
-.shop-shelves::after {
-  bottom: 0;
+  display: none;
 }
 
 .shop-shelf {
   position: relative;
-}
-
-.shop-ghost-shelf::after {
-  bottom: -9px;
 }
 
 .shop-ghost-offers {

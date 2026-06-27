@@ -489,6 +489,25 @@ test('烂命保险 prevents a red eye bust, sets hype to 120, and reports destru
   assert.notEqual(out.riskText, '爆炸');
 });
 
+test('烂命保险 also catches a hand that enters red eye and busts in one settle', () => {
+  const out = simulatePreview({
+    slots: [10, 11, 12, 13, 14].map((rank) => playableCard(rank, 'pulse')),
+    state: {
+      pressure: 95,
+      baseDebt: 0,
+      redEyeActive: false,
+      ownedJokers: [RED_EYE_GHOSTS.rottenLifeInsurance],
+    },
+    baseProfit: 0,
+    resolveModuleFn: (m, run, options) => {
+      if (options?.preview) m.preview(run);
+    },
+  });
+  assert.equal(out.pressure, 120);
+  assert.equal(out.insuranceTriggered, true);
+  assert.notEqual(out.riskText, '爆炸');
+});
+
 test('戒断反弹 consumes all pending stacks on the first red eye bet', () => {
   const out = simulatePreview({
     slots: [playableCard(10, 'pulse')],
